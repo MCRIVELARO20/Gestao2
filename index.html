@@ -1,0 +1,2661 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão de Engenharia</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f2f1ed;--sf:#fff;--sf2:#f0efe9;--bd:#e0dfd7;--bd2:#c8c7bf;--tx:#1a1a18;--tx2:#6b6b62;--tx3:#9b9b90;--ac:#1a3a5c;--ac2:#2563a8;--acbg:#e8f0fb;--gn:#2d6a3f;--gnbg:#e8f5ec;--am:#7a4a00;--ambg:#fef3e2;--rd:#8b1f1f;--rdbg:#fdecea;--pu:#3d2080;--pubg:#f0ecff;--r:6px;--rl:10px;--fn:'IBM Plex Sans',sans-serif;--mn:'IBM Plex Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--fn);background:var(--bg);color:var(--tx);font-size:14px}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--ac);flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-logo{padding:18px 16px 12px;border-bottom:1px solid rgba(255,255,255,.12)}
+.sidebar-logo h1{font-size:13px;font-weight:600;color:#fff;line-height:1.4}
+.sidebar-logo p{font-size:10px;color:rgba(255,255,255,.45);font-family:var(--mn);margin-top:2px}
+.nav-sec{padding:12px 12px 4px;font-size:9px;font-family:var(--mn);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em}
+.nav-btn{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.7);border:none;background:none;width:calc(100% - 12px);margin:1px 6px;border-radius:var(--r);text-align:left;transition:all .15s}
+.nav-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-btn.active{background:rgba(255,255,255,.16);color:#fff;font-weight:500}
+.nav-btn i{width:14px;text-align:center;font-size:12px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:#e24b4a;color:#fff;font-size:9px;font-family:var(--mn);padding:1px 5px;border-radius:10px;font-weight:600}
+.sidebar-footer{margin-top:auto;padding:10px 12px;border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:rgba(255,255,255,.3);font-family:var(--mn);line-height:1.6}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--sf);border-bottom:1px solid var(--bd);padding:9px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:40}
+.topbar-title{font-size:14px;font-weight:600}
+.topbar-sub{font-size:11px;color:var(--tx2);font-family:var(--mn)}
+.page-body{flex:1;overflow-y:auto;padding:18px 20px}
+.page{display:none}.page.active{display:block}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-bottom:16px}
+.metric{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:11px 13px}
+.metric-label{font-size:10px;color:var(--tx2);font-family:var(--mn);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.metric-value{font-size:22px;font-weight:600;line-height:1}
+.metric-sub{font-size:10px;color:var(--tx3);margin-top:2px}
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+.sec-title{font-size:14px;font-weight:600}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fsel{font-size:12px;padding:5px 7px;border:1px solid var(--bd);border-radius:var(--r);background:var(--sf);color:var(--tx);font-family:var(--fn)}
+.tbl-wrap{overflow-x:auto;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:7px 11px;font-size:10px;font-family:var(--mn);color:var(--tx2);border-bottom:1px solid var(--bd);background:var(--sf2);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+td{padding:7px 11px;border-bottom:1px solid var(--bd);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--sf2)}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:20px;font-size:10px;font-weight:500;font-family:var(--mn);white-space:nowrap}
+.bg-green{background:var(--gnbg);color:var(--gn)}.bg-amber{background:var(--ambg);color:var(--am)}.bg-red{background:var(--rdbg);color:var(--rd)}.bg-blue{background:var(--acbg);color:var(--ac)}.bg-gray{background:var(--sf2);color:#4a4a42}.bg-purple{background:var(--pubg);color:var(--pu)}
+.dl{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:var(--mn)}
+.dl-dot{width:6px;height:6px;border-radius:50%}
+.dl-ok{color:var(--gn)}.dl-ok .dl-dot{background:#2d9e4f}
+.dl-risk{color:var(--am)}.dl-risk .dl-dot{background:#d08000}
+.dl-late{color:var(--rd)}.dl-late .dl-dot{background:#cc3333}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--sf);color:var(--tx);font-size:12px;font-family:var(--fn);cursor:pointer;transition:all .12s;white-space:nowrap}
+.btn:hover{background:var(--sf2);border-color:var(--ac2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--ac);color:#fff;border-color:var(--ac)}.btn-primary:hover{background:var(--ac2)}
+.btn-sm{padding:3px 8px;font-size:11px}
+.btn-danger{background:var(--rdbg);color:var(--rd);border-color:#f5b0b0}
+.btn-icon{padding:4px 6px}
+.btn-green{background:var(--gnbg);color:var(--gn);border-color:#a0d8b8}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:14px}
+.modal{background:var(--sf);border-radius:var(--rl);border:1px solid var(--bd);width:560px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.modal-header{padding:14px 18px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.modal-title{font-size:14px;font-weight:600}
+.modal-sub{font-size:11px;color:var(--tx2);font-family:var(--mn);margin-top:2px}
+.modal-body{padding:14px 18px}
+.modal-footer{padding:10px 18px;border-top:1px solid var(--bd);display:flex;gap:7px;justify-content:flex-end}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:11px}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:10px;font-family:var(--mn);color:var(--tx2);text-transform:uppercase;letter-spacing:.04em}
+.form-group input,.form-group select,.form-group textarea{padding:7px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:var(--fn);background:var(--sf);color:var(--tx);width:100%}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--ac2);box-shadow:0 0 0 2px rgba(37,99,168,.1)}
+.form-group textarea{resize:vertical;min-height:56px}
+.confirm-dialog{background:var(--sf);border-radius:var(--rl);border:1px solid var(--bd);padding:20px;width:360px;max-width:100%;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.prog-bar{height:5px;background:var(--sf2);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:var(--ac2);border-radius:3px;transition:width .4s}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--ac);color:#fff;padding:9px 14px;border-radius:var(--rl);font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .2s;pointer-events:none;display:flex;align-items:center;gap:7px;max-width:320px}
+.toast.show{opacity:1}
+.app-footer{background:var(--ac);color:rgba(255,255,255,.4);font-size:10px;font-family:var(--mn);padding:5px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;flex-wrap:wrap;gap:4px}
+.app-footer b{color:rgba(255,255,255,.7)}
+/* SETUP */
+.setup-screen{position:fixed;inset:0;background:var(--ac);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px}
+.setup-box{background:#fff;border-radius:14px;padding:32px 36px;width:500px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:92vh;overflow-y:auto}
+.setup-logo{text-align:center;margin-bottom:22px}
+.setup-logo-icon{width:52px;height:52px;background:var(--acbg);border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--ac)}
+.setup-logo h2{font-size:17px;font-weight:600;color:var(--ac);margin-bottom:2px}
+.setup-logo p{font-size:11px;font-family:var(--mn);color:var(--tx2)}
+.setup-step{display:none}.setup-step.active{display:block}
+.step-title{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--ac);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sfield{margin-bottom:11px}
+.sfield label{display:block;font-size:10px;font-family:var(--mn);color:var(--tx2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.sfield input{width:100%;padding:9px 10px;border:1.5px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:var(--fn)}
+.sfield input:focus{outline:none;border-color:var(--ac2);box-shadow:0 0 0 2px rgba(37,99,168,.1)}
+.sbtn{width:100%;padding:10px;background:var(--ac);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:500;font-family:var(--fn);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:background .15s}
+.sbtn:hover{background:var(--ac2)}
+.sbtn:disabled{background:#aaa;cursor:not-allowed}
+.serror{background:var(--rdbg);color:var(--rd);font-size:12px;padding:7px 9px;border-radius:var(--r);margin-bottom:10px;display:none}
+.serror.show{display:block}
+.sinfo{background:var(--acbg);border:1px solid #b8d0f0;border-radius:var(--r);padding:9px 11px;font-size:12px;color:var(--ac);margin-bottom:12px;line-height:1.6}
+.swarn{background:var(--ambg);border:1px solid #f0c88a;border-radius:var(--r);padding:9px 11px;font-size:12px;color:var(--am);margin-bottom:12px;line-height:1.6}
+.slink{font-size:12px;color:var(--ac2);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:var(--fn)}
+.setup-foot{margin-top:14px;text-align:center;font-size:10px;color:var(--tx3);font-family:var(--mn)}
+/* SYNC */
+.sync-bar{display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mn)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#2d9e4f;flex-shrink:0}
+.sync-dot.syncing{background:#d08000;animation:pulse .8s infinite}
+.sync-dot.error{background:#cc3333}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* GANTT */
+.gantt-shell{display:flex;border:1px solid var(--bd);border-radius:var(--rl);background:var(--sf);overflow:hidden;font-size:12px}
+.gantt-left{width:290px;flex-shrink:0;border-right:2px solid var(--bd2)}
+.gantt-right{flex:1;overflow-x:auto;position:relative}
+.gl-hdr{display:grid;grid-template-columns:18px 1fr 58px 58px;background:var(--sf2);border-bottom:2px solid var(--bd2);height:46px;align-items:end}
+.gl-row{display:grid;grid-template-columns:18px 1fr 58px 58px;border-bottom:1px solid var(--bd);height:27px;align-items:center}
+.gl-row:hover{background:var(--sf2)}
+.gl-row.gpr{background:var(--acbg)}
+.gl-cell{padding:0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--bd);height:100%;display:flex;align-items:center;font-size:11px}
+.gl-cell.right{justify-content:flex-end;font-family:var(--mn)}
+.ind1{padding-left:14px!important}
+.gr-hdr{position:sticky;top:0;z-index:10;background:var(--sf2);border-bottom:2px solid var(--bd2)}
+.gr-months{display:flex;height:20px;border-bottom:1px solid var(--bd)}
+.gr-month{border-right:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;font-family:var(--mn);color:var(--tx2);padding:0 3px;background:var(--sf2)}
+.gr-days{display:flex;height:26px}
+.gr-day{border-right:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mn);color:var(--tx3);flex-shrink:0}
+.gr-day.wk{background:#f8f0e8}.gr-day.today{background:#fff0f0;color:var(--rd);font-weight:600}
+.gr-row{position:relative;border-bottom:1px solid var(--bd);height:27px}
+.gr-row.gpr{background:#f0f6ff}
+.gr-row:hover{background:#f5f4f0}
+.g-bar{position:absolute;top:4px;height:19px;border-radius:3px;display:flex;align-items:center;padding:0 5px;font-size:10px;color:#fff;font-weight:500;white-space:nowrap;overflow:hidden;cursor:default;box-shadow:0 1px 3px rgba(0,0,0,.2);z-index:2}
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:#e24b4a;opacity:.7;z-index:5;pointer-events:none}
+/* FILA */
+.fila-block{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:9px;overflow:hidden}
+.fila-hdr{padding:9px 12px;display:flex;align-items:center;gap:9px;background:var(--sf2);border-bottom:1px solid var(--bd);cursor:pointer}
+.fila-body{display:none;padding:9px 12px}
+.eng-av{width:30px;height:30px;border-radius:50%;background:var(--acbg);color:var(--ac);font-weight:600;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tk-row{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:var(--r);border:1px solid var(--bd);margin-bottom:4px;background:var(--sf)}
+.tk-row.late{border-color:#f5b0b0;background:var(--rdbg)}
+.prio-bar{width:3px;height:28px;border-radius:2px;flex-shrink:0}
+/* CHART */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-bottom:14px}
+.chart-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px}
+.chart-card-title{font-size:10px;font-family:var(--mn);color:var(--tx2);margin-bottom:9px;text-transform:uppercase;letter-spacing:.05em}
+.eng-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.eng-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:13px}
+.user-row{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid var(--bd);border-radius:var(--r);margin-bottom:6px;background:var(--sf)}
+
+/* TIMER */
+.timer-bar{position:fixed;top:0;left:0;right:0;z-index:500;background:#1a3a5c;color:#fff;padding:7px 16px;display:none;align-items:center;gap:12px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.timer-bar.active{display:flex}
+.timer-dot{width:8px;height:8px;border-radius:50%;background:#2ddc6b;animation:tpulse .8s infinite}
+@keyframes tpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.timer-name{font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timer-count{font-family:var(--mn);font-size:14px;font-weight:600;letter-spacing:.05em;min-width:70px;text-align:right}
+.timer-btn{padding:3px 10px;border-radius:4px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;font-size:11px;cursor:pointer;transition:background .15s}
+.timer-btn:hover{background:rgba(255,255,255,.15)}
+.timer-btn.pause{border-color:#ffc107;color:#ffc107}
+.timer-btn.stop{border-color:#e24b4a;color:#e24b4a}
+.shell{margin-top:0;transition:margin-top .2s}
+.shell.timer-on{margin-top:38px}
+/* TOOLTIP */
+.tip{position:relative;display:inline-block}
+.tip .tip-text{visibility:hidden;background:#1a3a5c;color:#fff;font-size:11px;border-radius:4px;padding:6px 9px;position:absolute;z-index:100;bottom:125%;left:50%;transform:translateX(-50%);white-space:nowrap;opacity:0;transition:opacity .2s;line-height:1.6;max-width:260px;white-space:normal;text-align:left}
+.tip:hover .tip-text{visibility:visible;opacity:1}
+.tip .tip-text::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a3a5c}
+/* HORA INFO BOX */
+.hora-info{background:#f0f6ff;border:1px solid #b8d0f0;border-radius:6px;padding:9px 12px;font-size:12px;color:#0c447c;line-height:1.7;margin-bottom:8px}
+.hora-info b{color:#1a3a5c}
+
+/* MODAL PAUSA */
+.pausa-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:center;justify-content:center;padding:14px}
+.pausa-box{background:#fff;border-radius:10px;padding:22px 24px;width:440px;max-width:100%;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.pausa-title{font-size:15px;font-weight:600;color:var(--tx);margin-bottom:4px}
+.pausa-sub{font-size:12px;color:var(--tx2);margin-bottom:14px;line-height:1.5}
+.motivo-option{display:flex;align-items:flex-start;gap:9px;padding:9px 11px;border-radius:var(--r);border:1.5px solid var(--bd);margin-bottom:6px;cursor:pointer;transition:all .15s}
+.motivo-option:hover{border-color:var(--ac2);background:var(--acbg)}
+.motivo-option.selected{border-color:var(--ac2);background:var(--acbg)}
+.motivo-option input[type=radio]{margin-top:2px;accent-color:var(--ac2);flex-shrink:0}
+.motivo-label{font-size:13px;font-weight:500;color:var(--tx)}
+.motivo-desc{font-size:11px;color:var(--tx2);margin-top:2px;line-height:1.4}
+.motivo-outros{width:100%;padding:8px 10px;border:1.5px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:var(--fn);margin-top:6px;display:none}
+.motivo-outros.show{display:block}
+.pausa-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)}
+/* MOTIVO BADGE */
+.motivo-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:10px;font-size:9px;background:#fff8e1;color:#8a6200;border:1px solid #f0c88a;font-family:var(--mn)}
+
+/* HELP PANEL */
+.help-btn{position:fixed;bottom:22px;right:22px;width:44px;height:44px;border-radius:50%;background:var(--ac);color:#fff;border:none;font-size:20px;cursor:pointer;z-index:600;box-shadow:0 3px 12px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.help-btn:hover{background:var(--ac2);transform:scale(1.08)}
+.help-panel{position:fixed;right:-420px;top:0;bottom:0;width:420px;background:#fff;z-index:700;box-shadow:-4px 0 20px rgba(0,0,0,.15);transition:right .3s;overflow-y:auto;display:flex;flex-direction:column}
+.help-panel.open{right:0}
+.help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:699;display:none}
+.help-overlay.open{display:block}
+.help-header{background:var(--ac);color:#fff;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:1}
+.help-header h2{font-size:15px;font-weight:600;margin:0}
+.help-close{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:4px}
+.help-close:hover{background:rgba(255,255,255,.15)}
+.help-body{padding:18px;flex:1}
+.help-section{margin-bottom:20px;border-bottom:1px solid var(--bd);padding-bottom:18px}
+.help-section:last-child{border-bottom:none}
+.help-section h3{font-size:13px;font-weight:600;color:var(--ac);margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.help-section p,.help-section li{font-size:12px;color:var(--tx2);line-height:1.7;margin-bottom:4px}
+.help-section ol,.help-section ul{padding-left:16px}
+.help-tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:500;margin:0 2px}
+.ht-green{background:var(--gnbg);color:var(--gn)}
+.ht-blue{background:var(--acbg);color:var(--ac2)}
+.ht-amber{background:var(--ambg);color:var(--am)}
+.ht-red{background:var(--rdbg);color:var(--rd)}
+.help-tip{background:#f0f6ff;border-left:3px solid var(--ac2);padding:8px 10px;border-radius:0 4px 4px 0;font-size:12px;color:#0c447c;margin-top:6px;line-height:1.6}
+/* RELATORIO */
+.rel-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px;margin-bottom:12px}
+.rel-stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px;margin-bottom:16px}
+.rel-stat-item{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:11px 13px;text-align:center}
+.rel-stat-num{font-size:26px;font-weight:600;line-height:1}
+.rel-stat-lbl{font-size:10px;color:var(--tx2);font-family:var(--mn);margin-top:3px;text-transform:uppercase}
+.rel-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:14px}
+.rel-chart-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px}
+.rel-chart-title{font-size:11px;font-family:var(--mn);color:var(--tx2);margin-bottom:9px;text-transform:uppercase;letter-spacing:.05em}
+.rel-table{width:100%;border-collapse:collapse;font-size:12px}
+.rel-table th{background:var(--sf2);padding:7px 10px;text-align:left;font-size:10px;font-family:var(--mn);color:var(--tx2);border-bottom:1px solid var(--bd);text-transform:uppercase}
+.rel-table td{padding:7px 10px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.rel-table tr:last-child td{border-bottom:none}
+.rel-table tr:hover td{background:var(--sf2)}
+.export-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#2d6a3f;color:#fff;border:none;border-radius:var(--r);font-size:12px;font-family:var(--fn);cursor:pointer;transition:background .15s}
+.export-btn:hover{background:#1f4f2d}
+
+/* ITENS CRÍTICOS */
+.ic-section{background:#fff8e1;border:1.5px solid #f0c88a;border-radius:var(--rl);padding:14px 16px;margin-top:10px}
+.ic-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+.ic-title{font-size:13px;font-weight:600;color:#7a4a00;display:flex;align-items:center;gap:7px}
+.ic-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:500}
+.ic-badge-ok{background:#eaf3de;color:#27500a}
+.ic-badge-pend{background:#faeeda;color:#633806}
+.ic-badge-na{background:var(--sf2);color:var(--tx2)}
+.ic-item-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border-radius:var(--r);border:1px solid #f0c88a;margin-bottom:5px}
+.ic-item-row:last-child{margin-bottom:0}
+.ic-item-nome{flex:1;font-size:12px;font-weight:500}
+.ic-item-qty{font-size:11px;font-family:var(--mn);color:var(--tx2);min-width:40px;text-align:right}
+.ic-item-prazo{font-size:11px;font-family:var(--mn);color:var(--tx2);min-width:72px;text-align:right}
+.ic-pcp-bar{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border-radius:var(--r);border:1.5px solid #f0c88a;margin-top:8px;flex-wrap:wrap}
+.ic-pcp-label{font-size:12px;font-weight:500;color:#7a4a00;flex:1}
+.ic-pcp-btns{display:flex;gap:6px}
+.ic-btn-sim{padding:5px 14px;background:#2d6a3f;color:#fff;border:none;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:var(--fn)}
+.ic-btn-sim:hover{background:#1f4f2d}
+.ic-btn-nao{padding:5px 14px;background:var(--rdbg);color:var(--rd);border:1px solid #f5b0b0;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:var(--fn)}
+.ic-btn-nao:disabled,.ic-btn-sim:disabled{opacity:.5;cursor:not-allowed}
+/* LEMBRETE POP-UP */
+.lembrete-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;padding:14px}
+.lembrete-box{background:#fff;border-radius:12px;padding:26px 28px;width:480px;max-width:100%;box-shadow:0 8px 30px rgba(0,0,0,.2);border-top:4px solid #d08000}
+.lembrete-icon{font-size:32px;text-align:center;margin-bottom:10px}
+.lembrete-title{font-size:16px;font-weight:600;color:#7a4a00;text-align:center;margin-bottom:6px}
+.lembrete-sub{font-size:13px;color:var(--tx2);text-align:center;margin-bottom:16px;line-height:1.6}
+.lembrete-proj-list{background:#fff8e1;border-radius:var(--r);padding:10px 12px;margin-bottom:16px;font-size:12px;line-height:1.8}
+.lembrete-footer{display:flex;gap:8px;justify-content:center}
+</style>
+</head>
+<body>
+
+<!-- TIMER BAR -->
+<div id="timer-bar" class="timer-bar">
+  <div class="timer-dot"></div>
+  <div>
+    <div style="font-size:9px;opacity:.6;font-family:var(--mn);text-transform:uppercase;letter-spacing:.06em">Cronômetro ativo</div>
+    <div class="timer-name" id="timer-name">—</div>
+  </div>
+  <div class="timer-count" id="timer-count">00:00:00</div>
+  <button class="timer-btn pause" onclick="timerPausar()" title="Pausar e salvar horas">⏸ Pausar</button>
+  <button class="timer-btn stop" onclick="timerConcluir()" title="Concluir atividade e salvar horas">✓ Concluir</button>
+</div>
+
+<!-- ══ SETUP / LOGIN ══ -->
+<div id="setup-screen" class="setup-screen">
+  <div class="setup-box">
+    <div class="setup-logo">
+      <div class="setup-logo-icon"><i class="fa-solid fa-industry"></i></div>
+      <h2 id="setup-company">Gestão de Engenharia</h2>
+      <p>Sistema de Gestão · Google Sheets Edition</p>
+    </div>
+
+    <!-- config inicial -->
+    <div id="ss-config" class="setup-step">
+      <div class="step-title"><div class="step-num">1</div>Conectar ao Google Sheets</div>
+      <div class="sinfo"><i class="fa-solid fa-circle-info" style="margin-right:5px"></i>Esta configuração é feita <b>uma única vez</b> pelo administrador. Após configurar, cada usuário só precisa fazer login.</div>
+      <div id="serr-cfg" class="serror"></div>
+      <div class="sfield"><label>ID da planilha Google *</label><input id="cfg-sid" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" style="font-size:11px;font-family:var(--mn)"></div>
+      <div class="sfield"><label>URL do Apps Script *</label><input id="cfg-aurl" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:11px;font-family:var(--mn)"></div>
+      <div class="sfield"><label>Nome da empresa</label><input id="cfg-emp" placeholder="Nome da empresa"></div>
+      <button class="sbtn" onclick="salvarCfg()"><i class="fa-solid fa-floppy-disk"></i> Salvar e continuar</button>
+      <div style="text-align:center;margin-top:10px"><button class="slink" onclick="showSS('ss-tutorial')"><i class="fa-solid fa-circle-question"></i> Como obter esses dados?</button></div>
+    </div>
+
+    <!-- tutorial -->
+    <div id="ss-tutorial" class="setup-step">
+      <div class="step-title"><div class="step-num">?</div>Como configurar</div>
+      <div style="font-size:12px;line-height:1.8;color:var(--tx)">
+        <b>1 — Criar a planilha Google</b>
+        <ol style="padding-left:16px;margin:6px 0 12px;font-size:12px">
+          <li>Acesse <a href="https://sheets.google.com" target="_blank" style="color:var(--ac2)">sheets.google.com</a> e crie uma planilha em branco</li>
+          <li>O <b>ID</b> é a parte da URL entre <code style="background:var(--sf2);padding:1px 4px;border-radius:3px">/d/</code> e <code style="background:var(--sf2);padding:1px 4px;border-radius:3px">/edit</code></li>
+        </ol>
+        <b>2 — Instalar o Apps Script (backend)</b>
+        <ol style="padding-left:16px;margin:6px 0 12px;font-size:12px">
+          <li>Na planilha: <b>Extensões → Apps Script</b></li>
+          <li>Apague o código existente e cole o conteúdo do arquivo <b>apps_script.gs</b></li>
+          <li>Salve (Ctrl+S) e clique em <b>Executar → inicializarPlanilha</b> uma vez para criar as abas</li>
+          <li><b>Implantar → Nova implantação</b> → Tipo: <i>Aplicativo da Web</i></li>
+          <li>Executar como: <b>Eu</b> · Acesso: <b>Qualquer pessoa</b> → Implantar → Autorizar</li>
+          <li>Copie a <b>URL do aplicativo web</b></li>
+        </ol>
+        <div class="swarn"><i class="fa-solid fa-triangle-exclamation" style="margin-right:5px"></i>A URL começa com <code>https://script.google.com/macros/s/</code></div>
+      </div>
+      <button class="sbtn" onclick="showSS('ss-config')"><i class="fa-solid fa-arrow-left"></i> Voltar e configurar</button>
+    </div>
+
+    <!-- login -->
+    <div id="ss-login" class="setup-step">
+      <div id="serr-login" class="serror"></div>
+      <div class="sfield"><label>E-mail / Login</label>
+        <input id="l-email" type="text" placeholder="mcrivelaro20@gmail.com" onkeydown="if(event.key==='Enter')document.getElementById('l-senha').focus()">
+      </div>
+      <div class="sfield" style="position:relative"><label>Senha</label>
+        <input id="l-senha" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+        <button onclick="tv('l-senha','l-eye')" style="position:absolute;right:10px;bottom:10px;background:none;border:none;cursor:pointer;color:var(--tx2)"><i class="fa-solid fa-eye" id="l-eye"></i></button>
+      </div>
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:10px;background:var(--sf2);padding:7px 9px;border-radius:var(--r)">
+        <i class="fa-solid fa-circle-info" style="margin-right:4px"></i>Senha inicial padrão: <b style="font-family:monospace">admin1234</b>
+      </div>
+      <button class="sbtn" id="lbtn" onclick="doLogin()"><i class="fa-solid fa-lock-open"></i> Entrar no sistema</button>
+      <div style="text-align:center;margin-top:10px;display:flex;justify-content:center;gap:12px">
+        <button class="slink" onclick="showSS('ss-rec')">Esqueci minha senha</button>
+        <span style="color:#ddd">|</span>
+        <button class="slink" onclick="showSS('ss-config')" style="color:var(--tx3);font-size:11px">Reconfigurar</button>
+      </div>
+    </div>
+
+    <!-- primeiro acesso -->
+    <div id="ss-first" class="setup-step">
+      <div id="serr-first" class="serror"></div>
+      <div class="swarn"><i class="fa-solid fa-triangle-exclamation" style="margin-right:5px"></i><b>Primeiro acesso.</b> Crie uma senha personalizada para continuar.</div>
+      <div class="sfield"><label>Nova senha *</label><input id="l-nova" type="password" placeholder="Mínimo 3 caracteres"></div>
+      <div class="sfield"><label>Confirmar *</label><input id="l-conf" type="password" onkeydown="if(event.key==='Enter')doTrocar()"></div>
+      <button class="sbtn" onclick="doTrocar()"><i class="fa-solid fa-floppy-disk"></i> Salvar e entrar</button>
+    </div>
+
+    <!-- recuperar senha -->
+    <div id="ss-rec" class="setup-step">
+      <div id="serr-rec" class="serror"></div>
+      <div style="text-align:center;margin-bottom:12px;color:var(--tx2);font-size:13px"><i class="fa-solid fa-key fa-2x" style="display:block;color:var(--am);margin-bottom:7px"></i>E-mail + senha de recuperação + nova senha</div>
+      <div class="sfield"><label>E-mail</label><input id="l-rec-e" type="text" placeholder="email@empresa.com.br"></div>
+      <div class="sfield"><label>Senha de recuperação</label><input id="l-rec-s" type="password" placeholder="Senha de recuperação"></div>
+      <div class="sfield"><label>Nova senha</label><input id="l-rec-n" type="password" onkeydown="if(event.key==='Enter')doRec()"></div>
+      <button class="sbtn" style="background:#2d6a3f" onclick="doRec()"><i class="fa-solid fa-shield-check"></i> Redefinir senha</button>
+      <div style="text-align:center;margin-top:8px"><button class="slink" onclick="showSS('ss-login')"><i class="fa-solid fa-arrow-left"></i> Voltar</button></div>
+    </div>
+
+    <!-- carregando -->
+    <div id="ss-loading" class="setup-step">
+      <div style="text-align:center;padding:28px 0;color:var(--tx2)">
+        <i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--ac);display:block;margin-bottom:12px"></i>
+        <div style="font-size:13px" id="load-msg">Conectando ao Google Sheets...</div>
+        <div style="font-size:11px;font-family:var(--mn);color:var(--tx3);margin-top:7px" id="load-sub">Isto pode levar alguns segundos.</div>
+      </div>
+    </div>
+
+    <div class="setup-foot">© <span id="setup-yr"></span> Eng. Marcelo Crivelaro — Todos os direitos reservados</div>
+  </div>
+</div>
+
+<!-- ══ APP PRINCIPAL ══ -->
+<div class="shell" id="app-shell" style="display:none">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1 id="sid-empresa">Gestão de Engenharia</h1>
+      <p id="sid-date"></p>
+    </div>
+    <div class="nav-sec">Painel</div>
+    <button class="nav-btn active" onclick="goPage('projetos',this)"><i class="fa-solid fa-folder-open"></i><span>Projetos</span></button>
+    <button class="nav-btn" onclick="goPage('gantt',this)"><i class="fa-solid fa-chart-gantt"></i><span>Gantt</span></button>
+    <button class="nav-btn" onclick="goPage('fila',this)"><i class="fa-solid fa-bars-staggered"></i><span>Fila Engenheiro</span></button>
+    <button class="nav-btn" onclick="goPage('tarefas',this)"><i class="fa-solid fa-list-check"></i><span>Tarefas</span></button>
+    <div class="nav-sec">Equipe</div>
+    <button class="nav-btn" onclick="goPage('engenheiros',this)"><i class="fa-solid fa-users"></i><span>Engenheiros</span></button>
+    <button class="nav-btn" onclick="goPage('stakeholders',this)"><i class="fa-solid fa-user-tie"></i><span>Gestores</span></button>
+    <button class="nav-btn" onclick="goPage('notificacoes',this)"><i class="fa-solid fa-bell"></i><span>Notificações</span><span class="nav-badge" id="badge-n" style="display:none">0</span></button>
+    <div class="nav-sec">Análise</div>
+    <button class="nav-btn" onclick="goPage('graficos',this)"><i class="fa-solid fa-chart-bar"></i><span>Gráficos</span></button>
+    <button class="nav-btn" onclick="goPage('eficiencia',this)"><i class="fa-solid fa-gauge-high"></i><span>Eficiência</span></button>
+    <button class="nav-btn" onclick="goPage('relatorios',this)"><i class="fa-solid fa-chart-column"></i><span>Rel. Paradas</span></button>
+    <div class="nav-sec" id="nav-admin-sec" style="display:none">Admin</div>
+    <button class="nav-btn" id="nav-usuarios" onclick="goPage('usuarios',this)" style="display:none"><i class="fa-solid fa-users-gear"></i><span>Usuários</span></button>
+    <button class="nav-btn" id="nav-cfg" onclick="goPage('configuracoes',this)" style="display:none"><i class="fa-solid fa-gear"></i><span>Configurações</span></button>
+    <div class="sidebar-footer">
+      <div class="sync-bar"><div class="sync-dot" id="sync-dot"></div><span id="sync-txt">Sheets conectado</span></div>
+      <div id="sf-count" style="margin-top:2px"></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title" id="tp-title">Projetos</div><div class="topbar-sub" id="tp-sub"></div></div>
+      <div style="display:flex;align-items:center;gap:7px" id="tp-right"></div>
+    </div>
+    <div class="page-body">
+
+      <div id="page-projetos" class="page active">
+        <div class="metrics" id="proj-metrics"></div>
+        <div class="sec-header"><span class="sec-title">Lista de Projetos</span>
+          <div class="filters">
+            <select class="fsel" id="fp-eng" onchange="renderProjetos()"><option value="">Todos</option></select>
+            <select class="fsel" id="fp-status" onchange="renderProjetos()"><option value="">Status</option><option>Em andamento</option><option>Concluído</option><option>Pendente</option><option>Pausado</option></select>
+            <select class="fsel" id="fp-prio" onchange="renderProjetos()"><option value="">Prioridade</option><option>Alta</option><option>Média</option><option>Baixa</option></select>
+          </div>
+        </div>
+        <div id="proj-list"></div>
+      </div>
+
+      <div id="page-gantt" class="page">
+        <div class="sec-header"><span class="sec-title">Cronograma Gantt</span>
+          <div class="filters">
+            <select class="fsel" id="fg-eng" onchange="renderGantt()"><option value="">Todos</option></select>
+            <button class="btn btn-sm" onclick="gS(-30)"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="btn btn-sm" onclick="gR()">Hoje</button>
+            <button class="btn btn-sm" onclick="gS(30)"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="btn btn-sm" onclick="gZ(-6)">−</button>
+            <button class="btn btn-sm" onclick="gZ(6)">+</button>
+          </div>
+        </div>
+        <div id="gantt-container"></div>
+      </div>
+
+      <div id="page-fila" class="page">
+        <div class="sec-header"><span class="sec-title">Fila por Engenheiro</span>
+          <div class="filters">
+            <select class="fsel" id="ff-st" onchange="renderFila()"><option value="">Status</option><option>Em andamento</option><option>Pendente</option><option>Concluído</option></select>
+            <select class="fsel" id="ff-pr" onchange="renderFila()"><option value="">Prioridade</option><option>Alta</option><option>Média</option><option>Baixa</option></select>
+          </div>
+        </div>
+        <div id="fila-container"></div>
+      </div>
+
+      <div id="page-tarefas" class="page">
+        <div class="sec-header"><span class="sec-title">Tarefas</span>
+          <div class="filters">
+            <select class="fsel" id="ft-eng" onchange="renderTarefas()"><option value="">Todos</option></select>
+            <select class="fsel" id="ft-st" onchange="renderTarefas()"><option value="">Status</option><option>Em andamento</option><option>Concluído</option><option>Pendente</option></select>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table><thead><tr><th>Engenheiro</th><th>Projeto</th><th>Tarefa</th><th>Status</th><th>Prio</th><th>Prazo</th><th>Hrs/Dias</th><th>Modo</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="task-tbody"></tbody></table></div>
+      </div>
+
+      <div id="page-engenheiros" class="page">
+        <div class="sec-header"><span class="sec-title">Equipe</span><button class="btn btn-primary btn-sm" onclick="openModalEng()"><i class="fa-solid fa-plus"></i> Novo</button></div>
+        <div class="eng-grid" id="eng-grid"></div>
+      </div>
+
+      <div id="page-stakeholders" class="page">
+        <div class="sec-header"><span class="sec-title">Gestores e Diretores</span><button class="btn btn-primary btn-sm" onclick="openModalSk()"><i class="fa-solid fa-plus"></i> Novo</button></div>
+        <div id="sk-list"></div>
+      </div>
+
+      <div id="page-notificacoes" class="page">
+        <div class="sec-header"><span class="sec-title">Notificações</span>
+          <div class="filters">
+            <button class="btn btn-sm btn-primary" onclick="marcarTodasLidas()"><i class="fa-solid fa-check-double"></i> Marcar lidas</button>
+            <button class="btn btn-sm" onclick="sincronizar()"><i class="fa-solid fa-rotate-right"></i> Sincronizar</button>
+          </div>
+        </div>
+        <div id="notif-list"></div>
+      </div>
+
+      <div id="page-graficos" class="page">
+        <div class="sec-header"><span class="sec-title">Gráficos</span><button class="btn btn-sm" onclick="renderCharts()"><i class="fa-solid fa-rotate-right"></i></button></div>
+        <div class="chart-grid">
+          <div class="chart-card"><div class="chart-card-title">Status dos projetos</div><div style="position:relative;height:190px"><canvas id="c-status"></canvas></div></div>
+          <div class="chart-card"><div class="chart-card-title">Carga por engenheiro</div><div id="c-carga-w" style="position:relative"><canvas id="c-carga"></canvas></div></div>
+          <div class="chart-card"><div class="chart-card-title">Prioridades</div><div style="position:relative;height:190px"><canvas id="c-prio"></canvas></div></div>
+          <div class="chart-card"><div class="chart-card-title">Progresso</div><div id="c-prog-w" style="position:relative"><canvas id="c-prog"></canvas></div></div>
+        </div>
+      </div>
+
+      <div id="page-eficiencia" class="page">
+        <div class="sec-header"><span class="sec-title">Eficiência</span><button class="btn btn-sm" onclick="renderEff()"><i class="fa-solid fa-rotate-right"></i></button></div>
+        <div id="eff-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:11px;margin-bottom:14px"></div>
+        <div class="chart-grid">
+          <div class="chart-card"><div class="chart-card-title">Índice de eficiência</div><div id="c-eff-w" style="position:relative"><canvas id="c-eff"></canvas></div></div>
+          <div class="chart-card"><div class="chart-card-title">Prazo vs Atrasadas</div><div id="c-prazo-w" style="position:relative"><canvas id="c-prazo"></canvas></div></div>
+        </div>
+      </div>
+
+      <div id="page-usuarios" class="page">
+        <div class="sec-header"><span class="sec-title">Usuários</span><button class="btn btn-primary btn-sm" onclick="openModalUsr()"><i class="fa-solid fa-plus"></i> Novo usuário</button></div>
+        <div id="users-list"></div>
+      </div>
+
+      <div id="page-configuracoes" class="page">
+        <div class="sec-header"><span class="sec-title">Configurações</span><button class="btn btn-primary btn-sm" onclick="salvarCfgApp()"><i class="fa-solid fa-floppy-disk"></i> Salvar</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px">
+            <div style="font-size:10px;font-family:var(--mn);color:var(--tx2);margin-bottom:10px;text-transform:uppercase">Empresa</div>
+            <div class="form-group" style="margin-bottom:8px"><label>Nome</label><input id="cfg-empresa" placeholder="Nome da empresa"></div>
+            <div class="form-group" style="margin-bottom:8px"><label>Slogan</label><input id="cfg-slogan" placeholder="Slogan"></div>
+            <div class="form-group"><label>CNPJ</label><input id="cfg-cnpj" placeholder="00.000.000/0001-00"></div>
+          </div>
+          <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px">
+            <div style="font-size:10px;font-family:var(--mn);color:var(--tx2);margin-bottom:10px;text-transform:uppercase">Conexão Google Sheets</div>
+            <div class="form-group" style="margin-bottom:8px"><label>ID da planilha</label><input id="cfg-sid2" style="font-size:11px;font-family:var(--mn)"></div>
+            <div class="form-group" style="margin-bottom:10px"><label>URL do Apps Script</label><input id="cfg-aurl2" style="font-size:11px;font-family:var(--mn)"></div>
+            <button class="btn btn-green btn-sm" style="width:100%" onclick="testarConexao()"><i class="fa-solid fa-plug-circle-check"></i> Testar conexão</button>
+          </div>
+        </div>
+        <div style="background:var(--ac);color:rgba(255,255,255,.8);border-radius:var(--rl);padding:14px;font-size:13px">
+          <b style="color:#fff">© <span id="cfg-yr"></span> Eng. Marcelo Crivelaro</b> — Todos os direitos reservados · v3.0 Google Sheets Edition
+        </div>
+      </div>
+
+
+      <!-- PÁGINA RELATÓRIO DE PARADAS -->
+      <div id="page-relatorios" class="page">
+        <div class="sec-header">
+          <span class="sec-title">Relatório de Paradas</span>
+          <div class="filters">
+            <select class="fsel" id="rf-eng" onchange="renderRelatorio()"><option value="">Todos engenheiros</option></select>
+            <select class="fsel" id="rf-proj" onchange="renderRelatorio()"><option value="">Todos projetos</option></select>
+            <select class="fsel" id="rf-tipo" onchange="renderRelatorio()">
+              <option value="">Todos tipos</option>
+              <option>Outra atividade</option>
+              <option>Outro projeto</option>
+              <option>Reunião/Treinamento</option>
+              <option>Aguardando aprovação</option>
+              <option>Problema técnico</option>
+              <option value="Outros">Outros</option>
+            </select>
+            <button class="export-btn" onclick="exportarRelatorio()">
+              <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </button>
+          </div>
+        </div>
+
+        <!-- ESTATÍSTICAS -->
+        <div class="rel-stat" id="rel-stats"></div>
+
+        <!-- ITENS CRÍTICOS PENDENTES -->
+        <div class="rel-card" id="ic-resumo-card" style="border-color:#f0c88a;background:#fff8e1">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:600;color:#7a4a00">🔴 Status dos Itens Críticos de Compras</div>
+            <button class="export-btn" style="background:#c97a00" onclick="exportarIcExcel()">
+              <i class="fa-solid fa-file-excel"></i> Exportar IC Excel
+            </button>
+          </div>
+          <div id="ic-resumo-lista"></div>
+        </div>
+
+        <!-- GRÁFICOS -->
+        <div class="rel-chart-grid">
+          <div class="rel-chart-card">
+            <div class="rel-chart-title">Motivos de parada</div>
+            <div style="position:relative;height:200px"><canvas id="rc-motivos"></canvas></div>
+          </div>
+          <div class="rel-chart-card">
+            <div class="rel-chart-title">Paradas por engenheiro</div>
+            <div id="rc-eng-w" style="position:relative"><canvas id="rc-eng"></canvas></div>
+          </div>
+          <div class="rel-chart-card">
+            <div class="rel-chart-title">Paradas por projeto</div>
+            <div id="rc-proj-w" style="position:relative"><canvas id="rc-proj"></canvas></div>
+          </div>
+          <div class="rel-chart-card">
+            <div class="rel-chart-title">Paradas por dia da semana</div>
+            <div style="position:relative;height:200px"><canvas id="rc-dia"></canvas></div>
+          </div>
+        </div>
+
+        <!-- TABELA DETALHADA -->
+        <div class="rel-card">
+          <div style="font-size:12px;font-weight:500;color:var(--tx2);margin-bottom:10px;font-family:var(--mn);text-transform:uppercase;letter-spacing:.04em">Histórico detalhado de paradas</div>
+          <div style="overflow-x:auto">
+            <table class="rel-table" id="rel-tabela">
+              <thead><tr>
+                <th>Data/Hora</th>
+                <th>Engenheiro</th>
+                <th>Atividade</th>
+                <th>Projeto</th>
+                <th>Tipo</th>
+                <th>Motivo</th>
+                <th>Hrs acumuladas</th>
+              </tr></thead>
+              <tbody id="rel-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-body -->
+    <footer class="app-footer">
+      <span>© <span id="ftr-yr"></span> <b>Eng. Marcelo Crivelaro</b> — Todos os direitos reservados</span>
+      <span id="ftr-empresa"></span>
+      <span>Google Sheets · <span id="ftr-sync"></span></span>
+    </footer>
+  </div>
+</div>
+
+
+<!-- MODAL MOTIVO DE PARADA -->
+<div id="pausa-modal" class="pausa-modal" style="display:none">
+  <div class="pausa-box">
+    <div class="pausa-title">⏸ Pausar atividade</div>
+    <div class="pausa-sub" id="pausa-nome-sub">Registre o motivo da parada. Isso ajuda no acompanhamento e relatórios.</div>
+
+    <div class="motivo-option" onclick="selecionarMotivo(this,'outra_atividade')">
+      <input type="radio" name="motivo" value="outra_atividade">
+      <div>
+        <div class="motivo-label">🔀 Pausada para outra atividade</div>
+        <div class="motivo-desc">Vou trabalhar em outra tarefa ou etapa do mesmo projeto agora.</div>
+      </div>
+    </div>
+
+    <div class="motivo-option" onclick="selecionarMotivo(this,'outro_projeto')">
+      <input type="radio" name="motivo" value="outro_projeto">
+      <div>
+        <div class="motivo-label">📁 Pausada para outro projeto</div>
+        <div class="motivo-desc">Mudança de prioridade — vou trabalhar em um projeto diferente.</div>
+      </div>
+    </div>
+
+    <div class="motivo-option" onclick="selecionarMotivo(this,'reuniao')">
+      <input type="radio" name="motivo" value="reuniao">
+      <div>
+        <div class="motivo-label">📅 Reunião / Treinamento</div>
+        <div class="motivo-desc">Parei para participar de reunião, treinamento ou apresentação.</div>
+      </div>
+    </div>
+
+    <div class="motivo-option" onclick="selecionarMotivo(this,'aguardando')">
+      <input type="radio" name="motivo" value="aguardando">
+      <div>
+        <div class="motivo-label">⏳ Aguardando informação / aprovação</div>
+        <div class="motivo-desc">Preciso de retorno de outra pessoa ou área para continuar.</div>
+      </div>
+    </div>
+
+    <div class="motivo-option" onclick="selecionarMotivo(this,'problema_tecnico')">
+      <input type="radio" name="motivo" value="problema_tecnico">
+      <div>
+        <div class="motivo-label">🔧 Problema técnico</div>
+        <div class="motivo-desc">Impedimento técnico, falta de recurso ou bloqueio no processo.</div>
+      </div>
+    </div>
+
+    <div class="motivo-option" onclick="selecionarMotivo(this,'outros')">
+      <input type="radio" name="motivo" value="outros">
+      <div style="flex:1">
+        <div class="motivo-label">📝 Outros</div>
+        <div class="motivo-desc">Outro motivo não listado acima.</div>
+        <textarea id="motivo-outros-txt" class="motivo-outros" rows="2" placeholder="Descreva brevemente o motivo..."></textarea>
+      </div>
+    </div>
+
+    <div class="pausa-footer">
+      <button class="btn" onclick="fecharPausaModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarPausa()" id="btn-confirmar-pausa" disabled>
+        <i class="fa-solid fa-pause"></i> Confirmar pausa
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- BOTÃO DE AJUDA FIXO -->
+<button class="help-btn" onclick="toggleHelp()" title="Ajuda — Como usar o sistema">?</button>
+<div class="help-overlay" id="help-overlay" onclick="toggleHelp()"></div>
+
+<!-- PAINEL DE AJUDA -->
+<div class="help-panel" id="help-panel">
+  <div class="help-header">
+    <h2>📖 Guia de Uso — Gestão de Engenharia</h2>
+    <button class="help-close" onclick="toggleHelp()">✕</button>
+  </div>
+  <div class="help-body">
+
+    <div class="help-section">
+      <h3>🏠 Visão Geral do Sistema</h3>
+      <p>Este sistema organiza o trabalho da equipe de engenharia em <b>Projetos → Etapas → Tarefas</b>, com cronômetro automático de horas e relatórios de parada.</p>
+      <div class="help-tip">💡 Todos os dados são salvos automaticamente na planilha Google Sheets e sincronizados entre todos os computadores da equipe a cada 30 segundos.</div>
+    </div>
+
+    <div class="help-section">
+      <h3>📁 Projetos</h3>
+      <ol>
+        <li>Clique em <b>+ Novo Projeto</b> no topo da tela.</li>
+        <li>Preencha o <b>nome</b>, escolha o <b>líder</b> (engenheiro responsável) e defina as datas de <b>início</b> e <b>prazo</b>.</li>
+        <li>Defina a <b>prioridade</b>: <span class="help-tag ht-red">Alta</span> urgente, <span class="help-tag ht-amber">Média</span> normal, <span class="help-tag ht-green">Baixa</span> pode aguardar.</li>
+        <li>Após criar o projeto, adicione <b>Etapas</b> clicando no botão <b>+ Etapa</b> dentro do projeto.</li>
+      </ol>
+      <div class="help-tip">💡 Use o botão <b>▶ etapa(s)</b> para expandir e ver as etapas de cada projeto.</div>
+    </div>
+
+    <div class="help-section">
+      <h3>🔢 Etapas</h3>
+      <p>As etapas são as fases de um projeto. Cada etapa tem um responsável, prazo e estimativa de horas.</p>
+      <ol>
+        <li>Clique em <b>+ Etapa</b> dentro de um projeto.</li>
+        <li>Defina o <b>modo de execução</b>:<br>
+          <b>→ Em fila:</b> esta etapa só começa após a anterior terminar.<br>
+          <b>∥ Paralelo:</b> pode ocorrer ao mesmo tempo que outras etapas.
+        </li>
+        <li>Em <b>Esforço previsto</b>, escolha se quer inserir em <b>Horas</b> ou <b>Dias úteis</b> — o sistema converte automaticamente (1 dia = 8h).</li>
+        <li>Para iniciar, clique em <b>▶ Iniciar</b> — o cronômetro começa automaticamente.</li>
+        <li>Para pausar, clique em <b>⏸ Pausar</b> — você escolherá o motivo da parada.</li>
+      </ol>
+      <div class="help-tip">💡 As <b>horas realizadas</b> são preenchidas automaticamente pelo cronômetro. Você também pode editar manualmente se necessário.</div>
+    </div>
+
+    <div class="help-section">
+      <h3>✅ Tarefas</h3>
+      <p>Tarefas são atividades específicas atribuídas a cada engenheiro, podendo ou não estar vinculadas a etapas.</p>
+      <ol>
+        <li>Acesse o menu <b>Tarefas</b> e clique em <b>+ Nova Tarefa</b>.</li>
+        <li>Selecione o <b>engenheiro</b> responsável e o <b>projeto</b> relacionado.</li>
+        <li>Defina a <b>prioridade</b> e as datas.</li>
+        <li>Em <b>Esforço estimado</b>, informe quantas horas ou dias a tarefa levará.</li>
+        <li>Use os botões <b>▶</b> e <b>⏸</b> na tabela para iniciar e pausar o cronômetro.</li>
+      </ol>
+      <div class="help-tip">💡 A tabela mostra as horas <b>previstas</b> e <b>realizadas</b> lado a lado. Se as realizadas ultrapassarem as previstas, o valor fica em vermelho.</div>
+    </div>
+
+    <div class="help-section">
+      <h3>⏱ Cronômetro de Horas</h3>
+      <p>O sistema registra automaticamente o tempo trabalhado em cada atividade.</p>
+      <ol>
+        <li>Mude o status para <b>Em andamento</b> ou clique em <b>▶ Iniciar</b> — uma barra azul aparece no topo da tela com o cronômetro ao vivo.</li>
+        <li>Clique em <b>⏸ Pausar</b> na barra para interromper — um modal pedirá o <b>motivo da parada</b>.</li>
+        <li>Clique em <b>✓ Concluir</b> para finalizar a atividade e salvar as horas.</li>
+        <li>Se iniciar outra atividade sem pausar, a atividade atual é <b>pausada automaticamente</b>.</li>
+        <li>Se fechar o navegador, as horas são salvas. Ao reabrir, o cronômetro retoma de onde parou.</li>
+      </ol>
+      <div class="help-tip">⚠️ Apenas <b>uma atividade</b> pode estar em andamento por vez por usuário.</div>
+    </div>
+
+    <div class="help-section">
+      <h3>📊 Gráficos e Eficiência</h3>
+      <ul>
+        <li><b>Gráficos:</b> Status dos projetos, carga por engenheiro, prioridades e progresso.</li>
+        <li><b>Eficiência:</b> Índice de cada engenheiro calculado com base em conclusões, prazos e etapas.</li>
+        <li><b>Relatório de Paradas:</b> Análise completa dos motivos de parada por engenheiro, projeto e período.</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>📤 Exportar Relatório de Paradas</h3>
+      <ol>
+        <li>Acesse o menu <b>Rel. Paradas</b> no menu lateral.</li>
+        <li>Use os filtros para selecionar período, engenheiro ou projeto.</li>
+        <li>Clique em <b>Exportar Excel</b> para baixar o relatório em formato .xlsx.</li>
+        <li>O arquivo contém as abas: <b>Resumo</b>, <b>Por Motivo</b>, <b>Por Engenheiro</b> e <b>Histórico Completo</b>.</li>
+      </ol>
+    </div>
+
+    <div class="help-section">
+      <h3>👥 Equipe e Usuários</h3>
+      <ul>
+        <li><b>Engenheiros:</b> cadastro dos membros que aparecem na fila e nos projetos.</li>
+        <li><b>Usuários:</b> login do sistema (visível só para administradores). Cada usuário tem uma senha própria.</li>
+        <li><b>Gestores:</b> stakeholders que recebem notificações sobre o andamento dos projetos.</li>
+      </ul>
+      <div class="help-tip">💡 Um membro pode ter cadastro de <b>Engenheiro</b> (aparece na fila) E de <b>Usuário</b> (pode fazer login). São cadastros independentes.</div>
+    </div>
+
+    <div class="help-section">
+      <h3>🔔 Notificações</h3>
+      <p>O sistema gera automaticamente alertas para:</p>
+      <ul>
+        <li><span class="help-tag ht-red">Atrasado</span> tarefas ou projetos com prazo vencido</li>
+        <li><span class="help-tag ht-amber">Em risco</span> prazo vencendo em até 5 dias</li>
+        <li><span class="help-tag ht-green">Concluído</span> atividades ou projetos finalizados</li>
+      </ul>
+      <p>Clique em uma notificação para marcá-la como lida.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>🔴 Itens Críticos de Compras</h3>
+      <p>Cada projeto pode ter uma lista de materiais críticos que precisam ser requisitados ao PCP com antecedência.</p>
+      <ol>
+        <li>Na lista de projetos, clique em <b>🔴 Itens Críticos</b> no projeto desejado.</li>
+        <li>Se o projeto <b>não tiver itens críticos</b>, marque a opção <b>"Não se aplica"</b> e salve.</li>
+        <li>Para adicionar um item, informe a <b>descrição</b>, <b>quantidade</b> e <b>prazo necessário</b>, depois clique em <b>+ Adicionar</b>.</li>
+        <li>Após cadastrar os itens e enviar o e-mail ao PCP, clique em <b>✓ Sim, enviei</b> para confirmar.</li>
+        <li>Se clicar em <b>✗ Ainda não</b>, o sistema enviará um <b>lembrete pop-up uma vez por dia</b> até que você confirme.</li>
+      </ol>
+      <div class="help-tip">⚠️ O lembrete aparece apenas para o <b>líder do projeto</b>. O badge <span style="background:#faeeda;color:#633806;padding:1px 6px;border-radius:10px;font-size:11px">⚠ Pendente</span> aparece no projeto enquanto houver itens não confirmados.</div>
+    </div>
+
+    <div class="help-section">
+      <h3>⚙️ Configurações</h3>
+      <ul>
+        <li>Visível apenas para <b>Administradores</b>.</li>
+        <li>Permite alterar o nome da empresa e testar a conexão com o Google Sheets.</li>
+        <li>Use <b>Testar conexão</b> se o sistema não estiver sincronizando.</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>🆘 Problemas comuns</h3>
+      <ul>
+        <li><b>Dados não aparecem:</b> aguarde 30s (sincronização automática) ou recarregue a página (F5).</li>
+        <li><b>Erro ao criar:</b> abra o console do Chrome (F12 → Console) e me envie o erro.</li>
+        <li><b>Cronômetro sumiu:</b> recarregue — ele será recuperado automaticamente.</li>
+        <li><b>Ícones não aparecem:</b> verifique a conexão com a internet.</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- LEMBRETE ITENS CRÍTICOS -->
+<div id="lembrete-overlay" class="lembrete-overlay" style="display:none">
+  <div class="lembrete-box">
+    <div class="lembrete-icon">⚠️</div>
+    <div class="lembrete-title">Ação pendente — Itens Críticos de Compras</div>
+    <div class="lembrete-sub">
+      Você é líder dos projetos abaixo que possuem itens críticos de compras ainda <b>não confirmados como enviados ao PCP</b>.<br>
+      Por favor acesse cada projeto e confirme o envio.
+    </div>
+    <div class="lembrete-proj-list" id="lembrete-proj-list"></div>
+    <div class="lembrete-footer">
+      <button class="btn" onclick="document.getElementById('lembrete-overlay').style.display='none'">Lembrar mais tarde</button>
+      <button class="btn btn-primary" onclick="irParaProjetos()">
+        <i class="fa-solid fa-arrow-right"></i> Ver projetos
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ITENS CRÍTICOS (dentro do projeto) -->
+<div id="ic-modal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)fecharIcModal()">
+  <div class="modal" style="width:600px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">🔴 Itens Críticos de Compras</div>
+        <div class="modal-sub" id="ic-modal-proj-nome">Projeto</div>
+      </div>
+      <button class="btn btn-sm btn-icon" onclick="fecharIcModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="hora-info" style="margin-bottom:12px">
+        <b>O que são Itens Críticos?</b><br>
+        São materiais, componentes ou serviços com <b>prazo de entrega longo</b> ou <b>disponibilidade limitada</b> que precisam ser requisitados ao PCP com antecedência para não atrasar o projeto.<br>
+        <b>Adicione</b> os itens abaixo e confirme o envio da lista para o PCP assim que fizer o contato.
+      </div>
+
+      <!-- Opção Não se aplica -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--sf2);border-radius:var(--r);border:1px solid var(--bd);margin-bottom:12px">
+        <input type="checkbox" id="ic-nao-aplica" onchange="toggleNaoAplica()" style="width:16px;height:16px;accent-color:var(--ac2);cursor:pointer">
+        <div>
+          <div style="font-size:13px;font-weight:500">Este projeto não possui itens críticos de compras</div>
+          <div style="font-size:11px;color:var(--tx2)">Marque esta opção se não há necessidade de compras críticas para este projeto.</div>
+        </div>
+      </div>
+
+      <!-- Lista de itens -->
+      <div id="ic-itens-section">
+        <div id="ic-itens-lista" style="margin-bottom:10px"></div>
+
+        <!-- Adicionar item -->
+        <div style="background:var(--sf2);border-radius:var(--r);padding:10px;border:1px dashed var(--bd2)">
+          <div style="font-size:11px;font-family:var(--mn);color:var(--tx2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">+ Adicionar item crítico</div>
+          <div style="display:grid;grid-template-columns:1fr 80px 110px auto;gap:7px;align-items:end">
+            <div class="form-group" style="margin:0">
+              <label>Descrição do item *
+                <span class="tip" style="margin-left:3px"><span style="cursor:help;color:var(--ac2)">ⓘ</span>
+                  <span class="tip-text">Nome do material, componente ou serviço crítico. Ex: "Motor elétrico 5cv", "Válvula solenóide DN50".</span>
+                </span>
+              </label>
+              <input id="ic-new-nome" placeholder="Ex: Motor elétrico 5cv" style="font-size:12px">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Qtd</label>
+              <input id="ic-new-qty" type="number" min="1" value="1" placeholder="1" style="font-size:12px">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Prazo necessário
+                <span class="tip" style="margin-left:3px"><span style="cursor:help;color:var(--ac2)">ⓘ</span>
+                  <span class="tip-text">Data máxima em que este item precisa estar disponível para não atrasar o projeto.</span>
+                </span>
+              </label>
+              <input id="ic-new-prazo" type="date" style="font-size:12px">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="adicionarItemCritico()" style="margin-bottom:0;white-space:nowrap">
+              <i class="fa-solid fa-plus"></i> Adicionar
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirmação envio PCP -->
+        <div class="ic-pcp-bar" style="margin-top:12px">
+          <div>
+            <div class="ic-pcp-label">📧 Confirmação de envio ao PCP</div>
+            <div style="font-size:11px;color:var(--tx2);margin-top:2px">Você enviou a lista de itens críticos por e-mail ao PCP?<br>Esta confirmação é obrigatória e o sistema lembrará diariamente enquanto não for respondida.</div>
+          </div>
+          <div class="ic-pcp-btns" id="ic-pcp-btns">
+            <button class="ic-btn-sim" id="ic-btn-sim" onclick="confirmarEnvioPCP(true)">✓ Sim, enviei</button>
+            <button class="ic-btn-nao" id="ic-btn-nao" onclick="confirmarEnvioPCP(false)">✗ Ainda não</button>
+          </div>
+          <div id="ic-pcp-status" style="display:none;font-size:12px;font-weight:500"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="fecharIcModal()">Fechar</button>
+      <button class="btn btn-primary" onclick="salvarItensCriticos()">
+        <i class="fa-solid fa-floppy-disk"></i> Salvar itens críticos
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+<script>
+// ══ CONFIG ══
+const LC='geEng_cfg',LS='geEng_sess',LN='geEng_nlidas';
+const SPWD='admin1234';
+let CFG={sheetId:'',apiUrl:'',empresa:'Gestão de Engenharia'};
+let sess=null;
+let proj=[],eta=[],tar=[],eng=[],sk=[],usr=[],notifs=[],nLidas=new Set(),cfg={};
+let charts={};
+let gStart=new Date(),gDW=20;
+const TODAY=new Date();TODAY.setHours(0,0,0,0);
+gStart.setDate(gStart.getDate()-20);
+let syncTmr=null;
+
+// ══ UTILS ══
+function dL(ds){return Math.round((new Date(ds+'T00:00:00')-TODAY)/86400000);}
+function fD(ds){if(!ds)return'—';const[y,m,d]=ds.split('-');return d+'/'+m+'/'+y;}
+function fDS(ds){if(!ds)return'';const[y,m,d]=ds.split('-');return d+'/'+m;}
+function dlC(ds,done){if(done)return'dl dl-ok';const d=dL(ds);if(d<0)return'dl dl-late';if(d<=7)return'dl dl-risk';return'dl dl-ok';}
+function dlT(ds,done){if(done)return'Concluído';const d=dL(ds);if(d<0)return'Atrasado '+Math.abs(d)+'d';if(d===0)return'Hoje!';return d+'d';}
+function pC(p){return{Alta:'bg-red',Média:'bg-amber',Baixa:'bg-green'}[p]||'bg-gray';}
+function sC(s){return{Concluído:'bg-green','Em andamento':'bg-blue',Pendente:'bg-gray',Pausado:'bg-amber',Atrasado:'bg-red'}[s]||'bg-gray';}
+function pCol(p){return{Alta:'#cc3333',Média:'#d08000',Baixa:'#2d9e4f'}[p]||'#888';}
+function bCol(st,pr){if(st==='Concluído')return'#2d6a3f';if(st==='Pausado')return'#888';return{Alta:'#c0392b',Média:'#2563a8',Baixa:'#1a9e75'}[pr]||'#2563a8';}
+function ini(n){return(n||'?').split(' ').map(x=>x[0]).join('').substr(0,2).toUpperCase();}
+function eN(){return eng.map(e=>e.nome);}
+function tv(iid,eid){const i=document.getElementById(iid),e=document.getElementById(eid);i.type=i.type==='password'?'text':'password';if(e)e.className=i.type==='password'?'fa-solid fa-eye':'fa-solid fa-eye-slash';}
+function toast(msg,t='ok'){const el=document.getElementById('toast');el.style.background=t==='err'?'var(--rd)':t==='warn'?'var(--am)':'var(--ac)';document.getElementById('toast-msg').textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3200);}
+function setSS(s){const d=document.getElementById('sync-dot'),t=document.getElementById('sync-txt'),f=document.getElementById('ftr-sync');d&&(d.className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' error':''));if(t)t.textContent=s==='syncing'?'Sincronizando...':s==='error'?'Erro de conexão':'Sheets conectado';if(f)f.textContent=t?t.textContent:'';}
+
+// ══ API ══
+async function api(action,payload={}){
+  setSS('syncing');
+  try{
+    const url=CFG.apiUrl+'?action='+encodeURIComponent(action)+'&v='+Date.now();
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,...payload})});
+    const txt=await r.text();
+    setSS('ok');
+    try{return JSON.parse(txt);}catch{return{ok:false,erro:'Resposta inválida: '+txt.substr(0,80)};}
+  }catch(e){setSS('error');return{ok:false,erro:'Falha de conexão: '+e.message};}
+}
+
+// ══ SETUP ══
+function showSS(id){
+  document.querySelectorAll('.setup-step').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById(id);
+  if(el){el.classList.add('active');setTimeout(()=>el.querySelector('input')?.focus(),80);}
+}
+function setErr(id,msg){const el=document.getElementById(id);if(!el)return;el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),5000);}
+
+function salvarCfg(){
+  const sid=document.getElementById('cfg-sid').value.trim();
+  const url=document.getElementById('cfg-aurl').value.trim();
+  const emp=document.getElementById('cfg-emp').value.trim()||'Gestão de Engenharia';
+  if(!sid||!url){setErr('serr-cfg','Preencha o ID e a URL do Apps Script.');return;}
+  if(!url.startsWith('https://script.google.com')){setErr('serr-cfg','URL inválida. Deve começar com https://script.google.com/macros/s/');return;}
+  CFG={sheetId:sid,apiUrl:url,empresa:emp};
+  localStorage.setItem(LC,JSON.stringify(CFG));
+  document.getElementById('setup-company').textContent=emp;
+  showSS('ss-login');toast('Configuração salva!');
+}
+
+// ══ LOGIN ══
+async function doLogin(){
+  const email=document.getElementById('l-email').value.trim().toLowerCase();
+  const senha=document.getElementById('l-senha').value;
+  if(!email||!senha){setErr('serr-login','Preencha e-mail e senha.');return;}
+  const btn=document.getElementById('lbtn');
+  btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Verificando...';
+  showSS('ss-loading');document.getElementById('load-msg').textContent='Verificando credenciais...';
+  const r=await api('login',{email,senha});
+  btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-lock-open"></i> Entrar no sistema';
+  if(!r.ok){showSS('ss-login');setErr('serr-login',r.erro||'E-mail ou senha incorretos.');return;}
+  sess=r.usuario;
+  localStorage.setItem(LS,JSON.stringify({...sess,loginEm:new Date().toISOString()}));
+  const primo=sess.primeiroacesso==='true'||sess.primeiroacesso===true;
+  if(primo){showSS('ss-first');return;}
+  await carregar();
+}
+async function doTrocar(){
+  const nova=document.getElementById('l-nova').value,conf=document.getElementById('l-conf').value;
+  if(!nova||nova.length<3){setErr('serr-first','Mínimo 3 caracteres.');return;}
+  if(nova===SPWD){setErr('serr-first','Não use a senha padrão.');return;}
+  if(nova!==conf){setErr('serr-first','Senhas não coincidem.');return;}
+  showSS('ss-loading');document.getElementById('load-msg').textContent='Salvando nova senha...';
+  const r=await api('trocarSenha',{email:sess.email,novaSenha:nova});
+  if(!r.ok){showSS('ss-first');setErr('serr-first',r.erro||'Erro.');return;}
+  sess.primeiroacesso=false;localStorage.setItem(LS,JSON.stringify({...sess,loginEm:new Date().toISOString()}));
+  await carregar();toast('Senha definida com sucesso!');
+}
+async function doRec(){
+  const email=document.getElementById('l-rec-e').value.trim().toLowerCase();
+  const rec=document.getElementById('l-rec-s').value,nova=document.getElementById('l-rec-n').value;
+  if(!email||!rec||!nova){setErr('serr-rec','Preencha todos os campos.');return;}
+  showSS('ss-loading');
+  const r=await api('recuperarSenha',{email,senhaRec:rec,novaSenha:nova});
+  if(!r.ok){showSS('ss-rec');setErr('serr-rec',r.erro||'Erro.');return;}
+  showSS('ss-login');toast('Senha redefinida! Faça login.');
+}
+function doLogout(){
+  if(!confirm('Deseja sair?'))return;
+  clearInterval(syncTmr);localStorage.removeItem(LS);sess=null;
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('setup-screen').style.display='flex';
+  document.getElementById('l-email').value='';document.getElementById('l-senha').value='';
+  showSS('ss-login');
+}
+
+// ══ CARREGAR DADOS ══
+async function carregar(){
+  showSS('ss-loading');document.getElementById('load-msg').textContent='Carregando dados da planilha...';
+  document.getElementById('load-sub').textContent='Pode levar alguns segundos na primeira vez.';
+  const r=await api('getTudo');
+  if(!r.ok){document.getElementById('load-msg').textContent='Erro: '+(r.erro||'falha');document.getElementById('load-sub').textContent='Verifique a URL do Apps Script e tente novamente.';setTimeout(()=>showSS('ss-login'),4000);return;}
+  aplicar(r.dados);
+  try{const nl=localStorage.getItem(LN);if(nl)nLidas=new Set(JSON.parse(nl));}catch{}
+  gerarNotifs();entrarApp();syncTmr=setInterval(sincronizar,30000);
+}
+function aplicar(d){
+  if(!d)return;
+  proj=d.projetos||[];eta=d.etapas||[];tar=d.tarefas||[];
+  eng=d.engenheiros||[];sk=d.stakeholders||[];usr=d.usuarios||[];cfg=d.config||{};
+  if(cfg.empresa){['sid-empresa','ftr-empresa','setup-company'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=cfg.empresa;});document.title='Gestão — '+cfg.empresa;}
+}
+async function sincronizar(){
+  const r=await api('getTudo');
+  if(r.ok){aplicar(r.dados);gerarNotifs();renderAll();renderNBadge();document.getElementById('sf-count').textContent=proj.length+'p · '+tar.length+'t';}
+}
+
+// ══ ENTRAR APP ══
+function entrarApp(){
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('app-shell').style.display='flex';
+  const isAdm=['superadmin','admin'].includes(sess?.perfil);
+  const pc={superadmin:'bg-red',admin:'bg-red',gestor:'bg-purple',engenheiro:'bg-blue'};
+  document.getElementById('tp-right').innerHTML=`
+    <button class="btn btn-sm" style="background:var(--acbg);border-color:#b8d0f0;color:var(--ac2)" onclick="openModalMinhaConta()"><i class="fa-solid fa-user-pen"></i> Minha conta</button>
+    <div style="display:flex;align-items:center;gap:6px;padding:3px 9px;background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r);font-size:12px;cursor:pointer" onclick="doLogout()" title="Sair">
+      <div style="width:20px;height:20px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">${ini(sess.nome)}</div>
+      <span style="font-family:var(--mn);font-size:11px">${sess.nome.split(' ')[0]}</span>
+      <span class="badge ${pc[sess.perfil]||'bg-gray'}" style="font-size:9px">${sess.perfil}</span>
+      <i class="fa-solid fa-arrow-right-from-bracket" style="color:var(--tx2);font-size:11px"></i>
+    </div>`;
+  document.getElementById('nav-admin-sec').style.display=isAdm?'':'none';
+  document.getElementById('nav-usuarios').style.display=isAdm?'':'none';
+  document.getElementById('nav-cfg').style.display=isAdm?'':'none';
+  popularFiltros();renderAll();renderNBadge();
+  document.getElementById('sf-count').textContent=proj.length+'p · '+tar.length+'t';
+  toast('Bem-vindo, '+sess.nome.split(' ')[0]+'! ✓');
+  // Recupera timer se estava ativo antes de recarregar
+  setTimeout(timerRecuperar, 1000);
+  // Verifica lembretes de itens críticos
+  setTimeout(verificarLembretes, 2500);
+}
+
+// ══ NAV ══
+function goPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn)btn.classList.add('active');
+  const titles={projetos:['Projetos','Gestão de projetos e etapas'],gantt:['Cronograma Gantt','Linha do tempo'],fila:['Fila de Trabalho','Por engenheiro'],tarefas:['Tarefas',''],engenheiros:['Equipe',''],stakeholders:['Gestores',''],notificacoes:['Notificações',''],graficos:['Gráficos',''],eficiencia:['Eficiência',''],relatorios:['Relatório de Paradas','Análise de motivos de parada por engenheiro e projeto'],usuarios:['Usuários',''],configuracoes:['Configurações','']};
+  const[t,s]=titles[id]||[id,''];
+  document.getElementById('tp-title').textContent=t;document.getElementById('tp-sub').textContent=s;
+  const ta=document.getElementById('tp-right');
+  const extraBtn=document.getElementById('tp-extra');if(extraBtn)extraBtn.remove();
+  if(['projetos','gantt'].includes(id)){const b=document.createElement('button');b.id='tp-extra';b.className='btn btn-primary btn-sm';b.innerHTML='<i class="fa-solid fa-plus"></i> Novo Projeto';b.onclick=openModalProj;ta.prepend(b);}
+  else if(id==='tarefas'){const b=document.createElement('button');b.id='tp-extra';b.className='btn btn-primary btn-sm';b.innerHTML='<i class="fa-solid fa-plus"></i> Nova Tarefa';b.onclick=openModalTar;ta.prepend(b);}
+  if(id==='graficos')setTimeout(renderCharts,80);
+  if(id==='eficiencia')setTimeout(renderEff,80);
+  if(id==='relatorios'){popularFiltrosRel();setTimeout(renderRelatorio,80);}
+  if(id==='configuracoes')carregarCfgUI();
+  if(id==='usuarios')renderUsuarios();
+}
+
+// ══ FILTROS ══
+function popularFiltros(){
+  const names=eN();
+  ['fp-eng','ft-eng','fg-eng'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const v=el.value;el.innerHTML='<option value="">Todos</option>'+names.map(n=>`<option${n===v?' selected':''}>${n}</option>`).join('');});
+}
+function renderAll(){popularFiltros();popularFiltrosRel();renderMetrics();renderProjetos();renderTarefas();renderEngenheiros();renderSk();renderNotif();if(document.getElementById('page-fila').classList.contains('active'))renderFila();if(document.getElementById('page-gantt').classList.contains('active'))renderGantt();}
+
+// ══ MÉTRICAS ══
+function renderMetrics(){
+  const tot=proj.length,con=proj.filter(p=>p.status==='Concluído').length;
+  const atr=proj.filter(p=>p.status!=='Concluído'&&p.prazo&&dL(p.prazo)<0).length;
+  const and=proj.filter(p=>p.status==='Em andamento').length;
+  const hrs=tar.reduce((a,t)=>a+(parseFloat(t.horas)||0),0);
+  document.getElementById('proj-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Total</div><div class="metric-value">${tot}</div></div>
+    <div class="metric"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--gn)">${con}</div><div class="metric-sub">${tot?Math.round(con/tot*100):0}%</div></div>
+    <div class="metric"><div class="metric-label">Em andamento</div><div class="metric-value" style="color:var(--ac2)">${and}</div></div>
+    <div class="metric"><div class="metric-label">Atrasados</div><div class="metric-value" style="color:var(--rd)">${atr}</div></div>
+    <div class="metric"><div class="metric-label">Horas prev.</div><div class="metric-value">${hrs}h</div></div>
+    <div class="metric"><div class="metric-label">Equipe</div><div class="metric-value">${eng.length}</div></div>`;
+}
+
+// ══ PROJETOS ══
+// Badge de status dos itens críticos de um projeto
+function icBadge(p){
+  const ic = getIcProjeto(p.id);
+  if(!ic || ic.nao_aplica) return '<span class="ic-badge ic-badge-na" style="font-size:9px">N/A</span>';
+  if(ic.itens && ic.itens.length > 0){
+    if(ic.pcp_enviado) return '<span class="ic-badge ic-badge-ok" style="font-size:9px">✓ PCP</span>';
+    return '<span class="ic-badge ic-badge-pend" style="font-size:9px;animation:tpulse .8s infinite">⚠ Pendente</span>';
+  }
+  return '';
+}
+
+function renderProjetos(){
+  const fe=document.getElementById('fp-eng')?.value||'',fs=document.getElementById('fp-status')?.value||'',fp=document.getElementById('fp-prio')?.value||'';
+  const rows=proj.filter(p=>(!fe||p.lider===fe)&&(!fs||p.status===fs)&&(!fp||p.prioridade===fp));
+  const isAdm=['superadmin','admin'].includes(sess?.perfil);
+  document.getElementById('proj-list').innerHTML=rows.map(p=>{
+    const pid=String(p.id);
+    const ets=eta.filter(e=>String(e.projeto_id)===pid).sort((a,b)=>parseInt(a.ordem||0)-parseInt(b.ordem||0));
+    const ec=ets.filter(e=>e.status==='Concluído').length,ep=ets.length?Math.round(ec/ets.length*100):0;
+    const erows=ets.map(et=>{
+      const late=et.status!=='Concluído'&&et.prazo&&dL(et.prazo)<0;
+      const bc=et.status==='Concluído'?'#2d6a3f':late?'#cc3333':et.status==='Em andamento'?'#2563a8':'#c8c7bf';
+      const hp=parseFloat(et.horas_prev)||0,hr=parseFloat(et.horas_real)||0;
+      const ph=hp>0?Math.min(100,Math.round(hr/hp*100)):0;
+      const modoBadge=et.modo==='paralelo'?'<span class="badge bg-purple" style="font-size:9px" title="Execução paralela">∥ Paralelo</span>':'<span class="badge bg-gray" style="font-size:9px" title="Execução em fila">→ Fila</span>';
+      const pausaBadge = et.motivo_pausa ? motivoBadge(et.motivo_pausa) : '';
+      const hrInfo=hp>0?`${hr}/${hp}h (${Math.round(hp/8*10)/10}d)`:`${hr}h real`;
+      return`<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--sf2);border-radius:var(--r);border-left:3px solid ${bc};margin-bottom:4px">
+        <span style="font-size:10px;color:var(--tx3);font-family:var(--mn);min-width:14px">${et.ordem}</span>
+        <span style="flex:1;font-size:12px;font-weight:500">${et.nome}</span>
+        <span style="font-size:11px;color:var(--tx2)">${(et.responsavel||'').split(' ')[0]}</span>
+        ${modoBadge}
+        ${pausaBadge}
+        <span class="badge ${sC(late?'Atrasado':et.status)}" style="font-size:10px">${late?'Atrasado':et.status}</span>
+        <span style="font-size:10px;font-family:var(--mn);color:var(--tx2)">${fD(et.prazo)}</span>
+        <div style="min-width:90px" title="${hp}h previstas = ${Math.round(hp/8*10)/10} dias úteis"><div style="font-size:9px;color:var(--tx3);text-align:right">${hrInfo}</div><div class="prog-bar"><div class="prog-fill" style="width:${ph}%;background:${bc}"></div></div></div>
+        ${isAdm?`
+        ${et.status!=='Em andamento'&&et.status!=='Concluído'?`<button class="btn btn-sm btn-green" style="padding:2px 7px;font-size:10px" onclick="iniciarEtapa('${et.id}')" title="Iniciar e ativar cronômetro">▶ Iniciar</button>`:''}
+        ${et.status==='Em andamento'?`<button class="btn btn-sm" style="padding:2px 7px;font-size:10px;background:var(--ambg);color:var(--am);border-color:#f0c88a" onclick="pausarEtapa('${et.id}')" title="Pausar e salvar horas">⏸ Pausar</button>`:''}
+        <button class="btn btn-sm btn-icon" onclick="openModalEta('${et.id}')"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon btn-danger" onclick="confDel('etapa','${et.id}')"><i class="fa-solid fa-trash-can"></i></button>`:''}
+      </div>`;}).join('');
+    return`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:9px;overflow:hidden">
+      <div style="padding:9px 13px;display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px"><div style="font-weight:600;font-size:13px">${p.nome}</div><div style="font-size:11px;color:var(--tx2)">${p.lider} · ${fD(p.inicio)} → ${fD(p.prazo)}</div></div>
+        <span class="badge ${sC(p.status)}">${p.status}</span>
+        <span class="badge ${pC(p.prioridade)}">${p.prioridade}</span>
+        ${p.prazo?`<span class="${dlC(p.prazo,p.status==='Concluído')}"><span class="dl-dot"></span>${dlT(p.prazo,p.status==='Concluído')}</span>`:''}
+        ${ets.length?`<span style="font-size:11px;font-family:var(--mn);color:var(--tx2)">${ec}/${ets.length} etapas (${ep}%)</span>`:''}
+        <div style="display:flex;gap:3px">
+          ${isAdm?`<button class="btn btn-sm btn-green" onclick="openModalEta(null,'${p.id}')"><i class="fa-solid fa-layer-plus"></i> Etapa</button>
+          <button class="btn btn-sm btn-icon" onclick="openModalProj('${p.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button class="btn btn-sm btn-icon btn-danger" onclick="confDel('projeto','${p.id}')"><i class="fa-solid fa-trash-can"></i></button>`:''}
+          <button style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--tx2);padding:3px 5px;border-radius:var(--r)" onclick="tP('ep-${p.id}',this)">
+            <i class="fa-solid fa-chevron-down"></i> ${ets.length} etapa(s)
+          </button>
+        </div>
+      </div>
+      <div id="ep-${p.id}" style="display:none;padding:7px 13px 10px;background:var(--sf2);border-top:1px solid var(--bd)">
+        ${ets.length?`<div style="display:flex;gap:5px;align-items:center;margin-bottom:6px"><div class="prog-bar" style="flex:1;height:6px"><div class="prog-fill" style="width:${ep}%"></div></div><span style="font-size:10px;font-family:var(--mn);color:var(--tx2)">${ep}%</span></div>`:''}
+        ${erows||'<p style="font-size:12px;color:var(--tx3)">Sem etapas. Clique em "+ Etapa" para adicionar.</p>'}
+      </div>
+    </div>`;}).join('')||'<p style="color:var(--tx3);padding:18px;text-align:center">Nenhum projeto encontrado.</p>';
+}
+function tP(id,btn){const el=document.getElementById(id);const o=el.style.display==='block';el.style.display=o?'none':'block';btn.querySelector('i').className=o?'fa-solid fa-chevron-down':'fa-solid fa-chevron-up';}
+
+// ══ TAREFAS ══
+function renderTarefas(){
+  const fe=document.getElementById('ft-eng')?.value||'',fs=document.getElementById('ft-st')?.value||'';
+  const isAdm=['superadmin','admin'].includes(sess?.perfil);
+  const rows=tar.filter(t=>(!fe||t.eng===fe)&&(!fs||t.status===fs));
+  document.getElementById('task-tbody').innerHTML=rows.map(t=>{
+    const late=t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0,disp=late?'Atrasado':t.status;
+    const hrsInfo=parseFloat(t.horas)||0;const diasInfo=Math.round(hrsInfo/8*10)/10;
+    const modoT=t.modo==='paralelo'?'<span class="badge bg-purple" style="font-size:9px">∥</span>':'<span class="badge bg-gray" style="font-size:9px">→</span>';
+    const pausaT=t.motivo_pausa?motivoBadge(t.motivo_pausa):'';
+    return`<tr><td>${t.eng}</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.projeto}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.tarefa}</td>
+    <td><span class="badge ${sC(disp)}">${disp}</span></td><td><span class="badge ${pC(t.prioridade)}">${t.prioridade}</span></td>
+    <td style="font-family:var(--mn);font-size:11px">${fD(t.prazo)}</td>
+    <td style="text-align:right;font-family:var(--mn)" title="Previsto: ${hrsInfo}h = ${diasInfo} dias úteis&#10;Realizado: ${parseFloat(t.horas_real)||0}h">
+      <div>${hrsInfo}h <span style="font-size:9px;color:var(--tx3)">(prev)</span></div>
+      <div style="color:${parseFloat(t.horas_real)>hrsInfo?'var(--rd)':parseFloat(t.horas_real)>0?'var(--gn)':'var(--tx3)'}">${parseFloat(t.horas_real)||0}h <span style="font-size:9px">(real)</span></div>
+    </td>
+    <td>${modoT} ${pausaT}</td>
+    <td><span class="${dlC(t.prazo,t.status==='Concluído')}"><span class="dl-dot"></span>${dlT(t.prazo,t.status==='Concluído')}</span></td>
+    <td style="white-space:nowrap;display:flex;gap:3px;align-items:center">
+      ${disp!=='Em andamento'&&disp!=='Concluído'?`<button class="btn btn-sm btn-green" style="padding:2px 7px;font-size:10px" onclick="iniciarTarefa('${t.id}')" title="Iniciar cronômetro">▶</button>`:''}
+      ${disp==='Em andamento'?`<button class="btn btn-sm" style="padding:2px 7px;font-size:10px;background:var(--ambg);color:var(--am);border-color:#f0c88a" onclick="pausarTarefa('${t.id}')" title="Pausar e salvar horas">⏸</button>`:''}
+      <button class="btn btn-sm btn-icon" onclick="openModalTar('${t.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+      ${isAdm?`<button class="btn btn-sm btn-icon btn-danger" onclick="confDel('tarefa','${t.id}')"><i class="fa-solid fa-trash-can"></i></button>`:''}
+    </td></tr>`;}).join('');
+}
+
+// ══ ENGENHEIROS ══
+function renderEngenheiros(){
+  const isAdm=['superadmin','admin'].includes(sess?.perfil);
+  document.getElementById('eng-grid').innerHTML=eng.map(e=>{
+    const tts=tar.filter(t=>t.eng===e.nome);
+    const hrs=tts.reduce((a,t)=>a+(parseFloat(t.horas)||0),0);
+    const con=tts.filter(t=>t.status==='Concluído').length,pct=tts.length?Math.round(con/tts.length*100):0;
+    const late=tts.filter(t=>t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0).length;
+    return`<div class="eng-card"><div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+      <div class="eng-av">${ini(e.nome)}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${e.nome}</div><div style="font-size:11px;color:var(--tx2)">${e.cargo||''}</div></div>
+      ${isAdm?`<button class="btn btn-sm btn-icon" onclick="openModalEng('${e.id}')"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon btn-danger" onclick="confDel('engenheiro','${e.id}')"><i class="fa-solid fa-trash-can"></i></button>`:''}
+    </div>
+    <div style="display:flex;gap:10px;font-size:12px;margin-bottom:7px"><span><b>${proj.filter(p=>p.lider===e.nome).length}</b> proj</span><span><b>${tts.length}</b> tar</span><span><b>${hrs}h</b></span>${late?`<span style="color:var(--rd)"><b>${late}</b> atrasada(s)</span>`:''}</div>
+    <div style="font-size:11px;color:var(--tx2);margin-bottom:2px">Conclusão: ${pct}%</div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div></div>`;}).join('');
+}
+
+// ══ STAKEHOLDERS ══
+function renderSk(){
+  const nv={diretor:'bg-red','gestor-senior':'bg-purple',gestor:'bg-blue',coordenador:'bg-amber'};
+  const isAdm=['superadmin','admin'].includes(sess?.perfil);
+  document.getElementById('sk-list').innerHTML=sk.length?`<div class="tbl-wrap"><table><thead><tr><th>Nome</th><th>Cargo</th><th>E-mail</th><th>Nível</th><th>Notificações</th>${isAdm?'<th>Ações</th>':''}</tr></thead><tbody>
+    ${sk.map(s=>{
+      const nl=[];
+      if(s.notif_late==='true'||s.notif_late===true)nl.push('<span class="badge bg-red" style="font-size:9px">Atrasados</span>');
+      if(s.notif_risk==='true'||s.notif_risk===true)nl.push('<span class="badge bg-amber" style="font-size:9px">Em risco</span>');
+      if(s.notif_done==='true'||s.notif_done===true)nl.push('<span class="badge bg-green" style="font-size:9px">Concluídos</span>');
+      return`<tr><td><b>${s.nome}</b></td><td>${s.cargo||'—'}</td><td style="font-family:var(--mn);font-size:11px">${s.email||'—'}</td>
+      <td><span class="badge ${nv[s.nivel]||'bg-gray'}">${s.nivel}</span></td><td>${nl.join(' ')||'—'}</td>
+      ${isAdm?`<td><button class="btn btn-sm btn-icon" onclick="openModalSk('${s.id}')"><i class="fa-solid fa-pen-to-square"></i></button><button class="btn btn-sm btn-icon btn-danger" onclick="confDel('stakeholder','${s.id}')"><i class="fa-solid fa-trash-can"></i></button></td>`:''}</tr>`;}).join('')}
+  </tbody></table></div>`:'<p style="color:var(--tx3);padding:18px">Nenhum gestor cadastrado.</p>';
+}
+
+// ══ NOTIFICAÇÕES ══
+function gerarNotifs(){
+  notifs=[];
+  tar.forEach(t=>{
+    const late=t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0,risk=t.status!=='Concluído'&&t.prazo&&dL(t.prazo)>=0&&dL(t.prazo)<=5;
+    if(late)notifs.push({id:'tl-'+t.id,tipo:'late',titulo:'Tarefa atrasada',desc:`"${t.tarefa}" — ${t.eng}`});
+    if(risk)notifs.push({id:'tr-'+t.id,tipo:'risk',titulo:`Prazo em ${dL(t.prazo)}d`,desc:`"${t.tarefa}" — ${t.eng}`});
+    if(t.status==='Concluído')notifs.push({id:'td-'+t.id,tipo:'done',titulo:'Tarefa concluída',desc:`"${t.tarefa}" — ${t.eng}`});
+  });
+  proj.forEach(p=>{
+    if(p.status==='Concluído')notifs.push({id:'pd-'+p.id,tipo:'done',titulo:'Projeto concluído ✓',desc:`"${p.nome}"`});
+    if(p.status!=='Concluído'&&p.prazo&&dL(p.prazo)<0)notifs.push({id:'pl-'+p.id,tipo:'late',titulo:'Projeto atrasado',desc:`"${p.nome}" — ${p.lider}`});
+  });
+}
+function renderNotif(){
+  const im={late:{ic:'fa-triangle-exclamation',bg:'var(--rdbg)',co:'var(--rd)'},risk:{ic:'fa-clock',bg:'var(--ambg)',co:'var(--am)'},done:{ic:'fa-circle-check',bg:'var(--gnbg)',co:'var(--gn)'}};
+  document.getElementById('notif-list').innerHTML=notifs.length?notifs.map(n=>{
+    const lida=nLidas.has(n.id),m=im[n.tipo]||im.done;
+    return`<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 11px;border-radius:var(--rl);border:${lida?'1px solid var(--bd)':'1px solid var(--ac2)'};border-left:${lida?'1px solid var(--bd)':'3px solid var(--ac2)'};background:${lida?'var(--sf)':'var(--acbg)'};margin-bottom:5px;cursor:pointer" onclick="mLida('${n.id}')">
+      <div style="width:28px;height:28px;border-radius:50%;background:${m.bg};color:${m.co};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0"><i class="fa-solid ${m.ic}"></i></div>
+      <div style="flex:1"><div style="font-weight:500;font-size:13px">${n.titulo}</div><div style="font-size:11px;color:var(--tx2);font-family:var(--mn)">${n.desc}</div></div>
+    </div>`;}).join(''):'<p style="color:var(--tx3);padding:18px;text-align:center">Sem notificações.</p>';
+}
+function renderNBadge(){const n=notifs.filter(x=>!nLidas.has(x.id)).length;const b=document.getElementById('badge-n');if(b){b.textContent=n;b.style.display=n?'':'none';}}
+function mLida(id){nLidas.add(id);localStorage.setItem(LN,JSON.stringify([...nLidas]));renderNotif();renderNBadge();}
+function marcarTodasLidas(){notifs.forEach(n=>nLidas.add(n.id));localStorage.setItem(LN,JSON.stringify([...nLidas]));renderNotif();renderNBadge();}
+
+// ══ FILA ══
+function renderFila(){
+  const fsV=document.getElementById('ff-st')?.value||'',fpV=document.getElementById('ff-pr')?.value||'';
+  document.getElementById('fila-container').innerHTML=eng.map(e=>{
+    let tks=tar.filter(t=>t.eng===e.nome);if(fpV)tks=tks.filter(t=>t.prioridade===fpV);
+    tks.sort((a,b)=>{const la=a.status!=='Concluído'&&a.prazo&&dL(a.prazo)<0,lb=b.status!=='Concluído'&&b.prazo&&dL(b.prazo)<0;if(la&&!lb)return-1;if(!la&&lb)return 1;const pa={Alta:0,Média:1,Baixa:2};return(pa[a.prioridade]||1)-(pa[b.prioridade]||1);});
+    let filt=[...tks];if(fsV)filt=filt.filter(t=>{const late=t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0;return(late?'Atrasado':t.status)===fsV;});
+    const hrs=tks.reduce((a,t)=>a+(parseFloat(t.horas)||0),0);
+    const cH=tks.filter(t=>t.status==='Concluído').reduce((a,t)=>a+(parseFloat(t.horas)||0),0);
+    const pct=hrs>0?Math.min(100,Math.round(cH/hrs*100)):0,lC=hrs>=160?'var(--rd)':hrs>=100?'var(--am)':'var(--gn)';
+    return`<div class="fila-block"><div class="fila-hdr" onclick="tP('fb-${e.id}',this)">
+      <div class="eng-av">${ini(e.nome)}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${e.nome}</div><div style="font-size:11px;color:var(--tx2)">${e.cargo||''}</div></div>
+      <div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+        <div style="text-align:center"><div style="font-size:15px;font-weight:600;color:${lC}">${hrs}h</div><div style="font-size:10px;font-family:var(--mn);color:var(--tx3)">carga</div></div>
+        <div style="width:58px"><div style="font-size:10px;color:var(--tx3);margin-bottom:2px">${pct}%</div><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${lC}"></div></div></div>
+        <div style="display:flex;gap:3px">
+          <span class="badge bg-green" style="font-size:9px">${tks.filter(t=>t.status==='Concluído').length}✓</span>
+          <span class="badge bg-blue" style="font-size:9px">${tks.filter(t=>t.status==='Em andamento').length}▶</span>
+          ${tks.filter(t=>t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0).length?`<span class="badge bg-red" style="font-size:9px">${tks.filter(t=>t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0).length}!</span>`:''}
+        </div>
+        <i class="fa-solid fa-chevron-down" style="color:var(--tx2)"></i>
+      </div>
+    </div>
+    <div id="fb-${e.id}" class="fila-body" style="display:none">
+      ${filt.map(t=>{const late=t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0;return`<div class="tk-row${late?' late':''}">
+        <div class="prio-bar" style="background:${pCol(t.prioridade)}"></div>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.tarefa}</div><div style="font-size:11px;color:var(--tx2)">${t.projeto}</div></div>
+        <span class="badge ${sC(late?'Atrasado':t.status)}" style="font-size:10px">${late?'Atrasado':t.status}</span>
+        <span class="${dlC(t.prazo,t.status==='Concluído')}" style="font-size:11px"><span class="dl-dot"></span>${dlT(t.prazo,t.status==='Concluído')}</span>
+        <span style="font-size:11px;font-family:var(--mn);color:var(--tx2)">${t.horas}h</span>
+      </div>`;}).join('')||'<p style="font-size:12px;color:var(--tx3)">Sem tarefas.</p>'}
+    </div></div>`;}).join('');
+}
+
+// ══ GANTT ══
+function gS(d){gStart=new Date(gStart);gStart.setDate(gStart.getDate()+d);renderGantt();}
+function gR(){gStart=new Date(TODAY);gStart.setDate(gStart.getDate()-20);renderGantt();}
+function gZ(d){gDW=Math.max(12,Math.min(40,gDW+d));renderGantt();}
+function renderGantt(){
+  const feV=document.getElementById('fg-eng')?.value||'';
+  const allE=proj.filter(p=>p.prazo).map(p=>new Date(p.prazo+'T00:00:00'));
+  if(!allE.length){document.getElementById('gantt-container').innerHTML='<p style="color:var(--tx3);padding:18px">Sem projetos com prazo.</p>';return;}
+  const maxE=new Date(Math.max(...allE));maxE.setDate(maxE.getDate()+14);
+  const totD=Math.max(90,Math.round((maxE-gStart)/86400000));
+  const days=[];for(let i=0;i<totD;i++){const d=new Date(gStart);d.setDate(d.getDate()+i);days.push(d);}
+  const totW=totD*gDW;
+  const months=[];let cm=null,cc=0;
+  days.forEach(d=>{const mk=d.getFullYear()+'-'+d.getMonth();if(mk!==cm){if(cm)months.push({count:cc,mk:cm});cm=mk;cc=1;}else cc++;});
+  if(cc)months.push({count:cc,mk:cm});
+  const todO=Math.round((TODAY-gStart)/86400000)*gDW;
+  let lR='',rR='';
+  proj.filter(p=>!feV||p.lider===feV).forEach(p=>{
+    const ets=eta.filter(e=>String(e.projeto_id)===String(p.id)).sort((a,b)=>parseInt(a.ordem||0)-parseInt(b.ordem||0));
+    lR+=`<div class="gl-row gpr"><div class="gl-cell" style="font-size:10px;color:var(--ac2)">▶</div><div class="gl-cell" style="font-weight:600;color:var(--ac)">${p.nome.length>19?p.nome.substr(0,17)+'…':p.nome}</div><div class="gl-cell right" style="font-size:10px">${fDS(p.inicio)}</div><div class="gl-cell right" style="font-size:10px">${fDS(p.prazo)}</div></div>`;
+    const si=p.inicio?Math.round((new Date(p.inicio+'T00:00:00')-gStart)/86400000)*gDW:0;
+    const bw=p.prazo&&p.inicio?Math.max(gDW,Math.round((new Date(p.prazo+'T00:00:00')-new Date(p.inicio+'T00:00:00'))/86400000)*gDW):gDW*30;
+    rR+=`<div class="gr-row gpr" style="min-width:${totW}px"><div class="g-bar" style="left:${Math.max(0,si)}px;width:${bw}px;background:${bCol(p.status,p.prioridade)}">${p.nome.substr(0,Math.floor(bw/7))}</div></div>`;
+    ets.forEach(et=>{
+      const late=et.status!=='Concluído'&&et.prazo&&dL(et.prazo)<0;
+      lR+=`<div class="gl-row"><div class="gl-cell" style="font-size:9px;color:var(--tx3)">${et.ordem}</div><div class="gl-cell ind1" style="font-size:11px">${et.nome.length>17?et.nome.substr(0,15)+'…':et.nome}</div><div class="gl-cell right" style="font-size:9px">${fDS(et.inicio)}</div><div class="gl-cell right" style="font-size:9px;color:${late?'var(--rd)':''}">${fDS(et.prazo)}</div></div>`;
+      const esO=et.inicio?Math.round((new Date(et.inicio+'T00:00:00')-gStart)/86400000)*gDW:si;
+      const ew=et.prazo&&et.inicio?Math.max(gDW,Math.round((new Date(et.prazo+'T00:00:00')-new Date(et.inicio+'T00:00:00'))/86400000)*gDW):gDW*14;
+      const ebc=et.status==='Concluído'?'#2d6a3f':late?'#cc3333':et.status==='Em andamento'?'#2563a8':'#888';
+      rR+=`<div class="gr-row" style="min-width:${totW}px"><div class="g-bar" style="left:${Math.max(0,esO)}px;width:${ew}px;background:${ebc};height:13px;top:7px;border-radius:2px;opacity:.9">${et.nome.substr(0,Math.floor(ew/7))}</div></div>`;
+    });
+  });
+  const mH=months.map(mg=>{const d=new Date(parseInt(mg.mk.split('-')[0]),parseInt(mg.mk.split('-')[1]),1);return`<div class="gr-month" style="width:${mg.count*gDW}px;min-width:${mg.count*gDW}px">${d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})}</div>`;}).join('');
+  const dH=days.map(d=>{const w=d.getDay()===0||d.getDay()===6,td=d.toDateString()===TODAY.toDateString();return`<div class="gr-day${w?' wk':''}${td?' today':''}" style="width:${gDW}px;min-width:${gDW}px">${gDW>=15?d.getDate():''}</div>`;}).join('');
+  document.getElementById('gantt-container').innerHTML=`<div class="gantt-shell"><div class="gantt-left"><div class="gl-hdr"><div class="gl-cell" style="font-size:9px">#</div><div class="gl-cell" style="font-size:9px">Nome</div><div class="gl-cell" style="font-size:9px">Início</div><div class="gl-cell" style="font-size:9px">Fim</div></div>${lR}</div><div class="gantt-right"><div class="gr-hdr"><div class="gr-months">${mH}</div><div class="gr-days">${dH}</div></div><div style="position:relative"><div class="today-line" style="left:${todO}px"></div>${rR}</div></div></div>`;
+}
+
+// ══ GRÁFICOS ══
+function renderCharts(){
+  Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});
+  const sM={};proj.forEach(p=>sM[p.status]=(sM[p.status]||0)+1);
+  const pM={Alta:0,Média:0,Baixa:0};proj.forEach(p=>pM[p.prioridade]=(pM[p.prioridade]||0)+1);
+  const eH={};eng.forEach(e=>eH[e.nome.split(' ')[0]]=0);
+  tar.forEach(t=>{const k=t.eng.split(' ')[0];eH[k]=(eH[k]||0)+(parseFloat(t.horas)||0);});
+  const pd=proj.filter(p=>p.status!=='Concluído').map(p=>{const ts=tar.filter(t=>t.projeto===p.nome);return{label:p.nome.substr(0,15),pct:ts.length?Math.round(ts.filter(t=>t.status==='Concluído').length/ts.length*100):0};}).slice(0,7);
+  const mn='IBM Plex Mono';
+  document.getElementById('c-carga-w').style.height=Math.max(140,Object.keys(eH).length*34+48)+'px';
+  document.getElementById('c-prog-w').style.height=Math.max(140,pd.length*34+48)+'px';
+  charts.s=new Chart(document.getElementById('c-status'),{type:'doughnut',data:{labels:Object.keys(sM),datasets:[{data:Object.values(sM),backgroundColor:['#2563a8','#2d6a3f','#888780','#c97a00','#cc3333'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:mn},boxWidth:10,padding:7}}}}});
+  charts.c=new Chart(document.getElementById('c-carga'),{type:'bar',data:{labels:Object.keys(eH),datasets:[{label:'Horas',data:Object.values(eH),backgroundColor:'#1a3a5c',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{font:{size:10,family:mn}}},y:{ticks:{font:{size:10,family:mn}}}}}});
+  charts.p=new Chart(document.getElementById('c-prio'),{type:'pie',data:{labels:['Alta','Média','Baixa'],datasets:[{data:[pM.Alta,pM.Média,pM.Baixa],backgroundColor:['#cc3333','#d08000','#2d6a3f'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:mn},boxWidth:10,padding:7}}}}});
+  charts.pr=new Chart(document.getElementById('c-prog'),{type:'bar',data:{labels:pd.map(d=>d.label),datasets:[{label:'%',data:pd.map(d=>d.pct),backgroundColor:'#1a9e75',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100,ticks:{callback:v=>v+'%',font:{size:10,family:mn}}},y:{ticks:{font:{size:10,family:mn}}}}}});
+}
+
+// ══ EFICIÊNCIA ══
+function renderEff(){
+  Object.keys(charts).filter(k=>k.startsWith('e')).forEach(k=>{try{charts[k].destroy()}catch(e){}delete charts[k]});
+  const mn='IBM Plex Mono';
+  const data=eng.map(e=>{
+    const ts=tar.filter(t=>t.eng===e.nome),es=eta.filter(et=>et.responsavel===e.nome);
+    const con=ts.filter(t=>t.status==='Concluído').length,late=ts.filter(t=>t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0).length;
+    const etC=es.filter(et=>et.status==='Concluído').length;
+    const pC2=ts.length?Math.round(con/ts.length*100):0,pP=ts.length?Math.round(Math.max(0,(ts.length-late)/ts.length*100)):0;
+    const pE=es.length?Math.round(etC/es.length*100):pC2,score=Math.round(pC2*.4+pP*.4+pE*.2);
+    return{nome:e.nome,short:e.nome.split(' ')[0],score,con,total:ts.length,late,etC,totalEt:es.length};
+  });
+  document.getElementById('eff-cards').innerHTML=data.map(d=>{
+    const co=d.score>=80?'#2d6a3f':d.score>=60?'#c97a00':'#cc3333';
+    const r=28,ci=2*Math.PI*r,da=ci*(d.score/100);
+    return`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:13px;text-align:center;border-top:3px solid ${co}">
+      <div style="width:60px;height:60px;margin:0 auto 7px;position:relative">
+        <svg width="60" height="60" viewBox="0 0 60 60"><circle cx="30" cy="30" r="${r}" fill="none" stroke="#e0dfd7" stroke-width="6"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${co}" stroke-width="6" stroke-dasharray="${da} ${ci-da}" stroke-linecap="round" transform="rotate(-90 30 30)"/></svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:${co}">${d.score}%</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:4px">${d.nome.split(' ')[0]}</div>
+      <div style="font-size:11px;color:var(--tx2);display:flex;justify-content:center;gap:7px;flex-wrap:wrap">
+        <span>${d.con}/${d.total} tar</span><span>${d.etC}/${d.totalEt} et</span>${d.late?`<span style="color:var(--rd)">${d.late}!</span>`:''}
+      </div></div>`;}).join('');
+  const h=Math.max(120,data.length*32+46);
+  ['c-eff-w','c-prazo-w'].forEach(id=>document.getElementById(id).style.height=h+'px');
+  charts.eff=new Chart(document.getElementById('c-eff'),{type:'bar',data:{labels:data.map(d=>d.short),datasets:[{label:'%',data:data.map(d=>d.score),backgroundColor:data.map(d=>d.score>=80?'#2d6a3f':d.score>=60?'#c97a00':'#cc3333'),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100,ticks:{callback:v=>v+'%',font:{size:10,family:mn}}},y:{ticks:{font:{size:10,family:mn}}}}}});
+  charts.epr=new Chart(document.getElementById('c-prazo'),{type:'bar',data:{labels:data.map(d=>d.short),datasets:[{label:'No prazo',data:data.map(d=>d.con),backgroundColor:'#2d6a3f',borderRadius:3},{label:'Atrasadas',data:data.map(d=>d.late),backgroundColor:'#cc3333',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{position:'bottom',labels:{font:{size:10,family:mn},boxWidth:10,padding:7}}},scales:{x:{beginAtZero:true,stacked:true,ticks:{font:{size:10}}},y:{stacked:true,ticks:{font:{size:10,family:mn}}}}}});
+}
+
+// ══ CONFIG UI ══
+function carregarCfgUI(){
+  document.getElementById('cfg-empresa').value=cfg.empresa||CFG.empresa||'';
+  document.getElementById('cfg-slogan').value=cfg.slogan||'';
+  document.getElementById('cfg-cnpj').value=cfg.cnpj||'';
+  document.getElementById('cfg-sid2').value=CFG.sheetId||'';
+  document.getElementById('cfg-aurl2').value=CFG.apiUrl||'';
+}
+async function salvarCfgApp(){
+  const body={empresa:document.getElementById('cfg-empresa').value,slogan:document.getElementById('cfg-slogan').value,cnpj:document.getElementById('cfg-cnpj').value};
+  CFG.sheetId=document.getElementById('cfg-sid2').value.trim();
+  CFG.apiUrl=document.getElementById('cfg-aurl2').value.trim();
+  localStorage.setItem(LC,JSON.stringify(CFG));
+  const r=await api('setConfig',body);
+  if(r.ok){cfg={...cfg,...body};['sid-empresa','ftr-empresa','setup-company'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=body.empresa;});toast('Configurações salvas!');}
+  else toast('Erro ao salvar.','err');
+}
+async function testarConexao(){const r=await api('ping');toast(r.ok?'✓ Conexão OK! Apps Script funcionando.':'✗ Falha: '+(r.erro||'erro'),r.ok?'ok':'err');}
+
+// ══ USUÁRIOS ══
+function renderUsuarios(){
+  const pc={superadmin:'bg-red',admin:'bg-red',gestor:'bg-purple',engenheiro:'bg-blue'};
+  document.getElementById('users-list').innerHTML=usr.map(u=>`<div class="user-row">
+    <div style="width:7px;height:7px;border-radius:50%;background:${u.ativo==='false'||u.ativo===false?'#ccc':'#2d9e4f'};flex-shrink:0"></div>
+    <div style="width:26px;height:26px;border-radius:50%;background:var(--acbg);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0">${ini(u.nome)}</div>
+    <div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px">${u.nome}</div><div style="font-size:11px;font-family:var(--mn);color:var(--tx2)">${u.email}</div></div>
+    <span class="badge ${pc[u.perfil]||'bg-gray'}" style="font-size:10px">${u.perfil}</span>
+    ${u.primeiroacesso==='true'||u.primeiroacesso===true?'<span class="badge bg-amber" style="font-size:10px">1º acesso</span>':''}
+    <button class="btn btn-sm btn-icon" onclick="openModalUsr('${u.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+    ${u.perfil!=='superadmin'?`<button class="btn btn-sm btn-icon btn-danger" onclick="confDel('usuario','${u.id}')"><i class="fa-solid fa-trash-can"></i></button>`:''}
+  </div>`).join('');
+}
+
+// ══ FECHAR MODAL ══
+function closeModal(){document.getElementById('modal-root').innerHTML='';}
+
+// ══ MINHA CONTA ══
+function openModalMinhaConta(){
+  document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="width:420px"><div class="modal-header"><div class="modal-title"><i class="fa-solid fa-user-pen" style="margin-right:7px;color:var(--ac2)"></i>Minha conta</div><button class="btn btn-sm btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="modal-body">
+    <div style="font-size:10px;font-family:var(--mn);color:var(--tx2);margin-bottom:10px;text-transform:uppercase">Alterar senhas (em branco = manter)</div>
+    <div class="form-grid">
+      <div class="form-group form-full"><label>Nova senha de acesso</label><div style="position:relative"><input id="mc-s" type="password" placeholder="Mínimo 3 caracteres"><button onclick="tv('mc-s','mc-se')" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx2)"><i class="fa-solid fa-eye" id="mc-se"></i></button></div></div>
+      <div class="form-group form-full"><label>Nova senha de recuperação</label><input id="mc-r" type="password" placeholder="Mínimo 3 caracteres"></div>
+    </div>
+  </div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarMinhaConta()"><i class="fa-solid fa-floppy-disk"></i> Salvar</button></div>
+  </div></div>`;
+}
+async function salvarMinhaConta(){
+  const s=document.getElementById('mc-s').value,r=document.getElementById('mc-r').value;
+  if(!s&&!r){toast('Nenhuma alteração.','warn');return;}
+  const res=await api('editarUsuario',{id:sess.id,senha:s,senhaRec:r});
+  if(res.ok){closeModal();toast('Conta atualizada!');}else toast('Erro: '+(res.erro||'falha'),'err');
+}
+
+// ══ MODAL PROJETO ══
+function openModalProj(id){
+  // Se recebeu um evento do mouse em vez de um ID, ignora
+  if(id && typeof id === 'object') id = null;
+  const p=id?proj.find(x=>String(x.id)===String(id)):null;
+  const eO=eN().map(n=>`<option${p&&p.lider===n?' selected':''}>${n}</option>`).join('');
+  document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div class="modal-header"><div class="modal-title">${p?'Editar':'Novo'} Projeto</div><button class="btn btn-sm btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group form-full"><label>Nome do projeto *<span class="tip" style="margin-left:4px"><span style="cursor:help;color:var(--ac2)">ⓘ</span><span class="tip-text">Dê um nome claro e objetivo ao projeto. Ex: "Projeto Plantadora X500".</span></span></label><input id="mp-n" value="${p?p.nome:''}" placeholder="Ex: Projeto Plantadora X500"></div>
+    <div class="form-group"><label>Líder do projeto<span class="tip" style="margin-left:4px"><span style="cursor:help;color:var(--ac2)">ⓘ</span><span class="tip-text">Engenheiro responsável pelo projeto. Ele aparecerá nos filtros e relatórios.</span></span></label><select id="mp-l"><option value="">— Selecione —</option>${eO}</select></div>
+    <div class="form-group"><label>Status</label><select id="mp-s"><option${p&&p.status==='Em andamento'?' selected':''}>Em andamento</option><option${p&&p.status==='Pendente'?' selected':''}>Pendente</option><option${p&&p.status==='Concluído'?' selected':''}>Concluído</option><option${p&&p.status==='Pausado'?' selected':''}>Pausado</option></select></div>
+    <div class="form-group"><label>Prioridade<span class="tip" style="margin-left:4px"><span style="cursor:help;color:var(--ac2)">ⓘ</span><span class="tip-text"><b>Alta:</b> urgente, impacto crítico.<br><b>Média:</b> importante, sem urgência imediata.<br><b>Baixa:</b> pode aguardar.</span></span></label><select id="mp-p"><option${!p||p.prioridade==='Alta'?' selected':''}>Alta</option><option${p&&p.prioridade==='Média'?' selected':''}>Média</option><option${p&&p.prioridade==='Baixa'?' selected':''}>Baixa</option></select></div>
+    <div class="form-group"><label>Início</label><input id="mp-i" type="date" value="${p?p.inicio||'':''}"></div>
+    <div class="form-group"><label>Prazo</label><input id="mp-pr" type="date" value="${p?p.prazo||'':''}"></div>
+    <div class="form-group form-full"><label>Observações</label><textarea id="mp-o">${p?p.obs||'':''}</textarea></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarProj('${id||''}')">${p?'Salvar':'Criar'}</button></div>
+  </div></div>`;
+}
+async function salvarProj(id){
+  const nome=document.getElementById('mp-n').value.trim();if(!nome)return alert('Informe o nome.');
+  const body={nome,lider:document.getElementById('mp-l').value,status:document.getElementById('mp-s').value,prioridade:document.getElementById('mp-p').value,inicio:document.getElementById('mp-i').value,prazo:document.getElementById('mp-pr').value,obs:document.getElementById('mp-o').value};
+  const r=id?await api('editarProjeto',{id,...body}):await api('criarProjeto',body);
+  if(r.ok){closeModal();await sincronizar();toast(id?'Projeto atualizado!':'Projeto criado!');}else toast('Erro: '+(r.erro||'falha'),'err');
+}
+
+// ══ MODAL ETAPA ══
+function openModalEta(id,pId){
+  if(id && typeof id === 'object') id = null;
+  const et=id?eta.find(x=>String(x.id)===String(id)):null;
+  const pid=et?et.projeto_id:pId,prj=proj.find(p=>String(p.id)===String(pid));
+  const eO=eN().map(n=>`<option${et&&et.responsavel===n?' selected':''}>${n}</option>`).join('');
+  const oMax=eta.filter(e=>String(e.projeto_id)===String(pid)).length;
+  document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div class="modal-header"><div><div class="modal-title">${et?'Editar':'Nova'} Etapa</div><div class="modal-sub">${prj?prj.nome:''}</div></div><button class="btn btn-sm btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group form-full"><label>Nome *</label><input id="et-n" value="${et?et.nome:''}" placeholder="Nome da etapa"></div>
+    <div class="form-group"><label>Responsável</label><select id="et-r">${eO}</select></div>
+    <div class="form-group">
+      <label>
+        Status da etapa
+        <span class="tip" style="margin-left:4px"><span style="cursor:help;color:var(--ac2)">ⓘ</span>
+          <span class="tip-text"><b>Pendente:</b> ainda não iniciada.<br><b>Em andamento:</b> em execução — inicia o cronômetro automaticamente.<br><b>Pausado:</b> interrompida — você escolherá o motivo da parada.<br><b>Concluído:</b> finalizada — o cronômetro é encerrado e horas salvas.</span>
+        </span>
+      </label>
+      <select id="et-s"><option${!et||et.status==='Pendente'?' selected':''}>Pendente</option><option${et&&et.status==='Em andamento'?' selected':''}>Em andamento</option><option${et&&et.status==='Pausado'?' selected':''}>Pausado</option><option${et&&et.status==='Concluído'?' selected':''}>Concluído</option></select>
+      ${et&&et.motivo_pausa?`<div style="margin-top:4px;font-size:11px;color:var(--am)">Último motivo de parada: <b>${et.motivo_pausa}</b></div>`:''}
+    </div>
+    <div class="form-group"><label>Início</label><input id="et-i" type="date" value="${et?et.inicio||'':''}"></div>
+    <div class="form-group"><label>Prazo</label><input id="et-pr" type="date" value="${et?et.prazo||'':''}"></div>
+    <div class="form-group"><label>Ordem</label><input id="et-o" type="number" min="1" value="${et?et.ordem:oMax+1}"></div>
+    <div class="form-group"><label>Modo de execução<span class="tip" style="margin-left:4px"><span style="cursor:help;color:var(--ac2)">ⓘ</span><span class="tip-text"><b>Em fila (→):</b> esta etapa só começa após a anterior terminar. Use para atividades dependentes.<br><b>Paralelo (∥):</b> pode ocorrer ao mesmo tempo que outras etapas. Use para atividades independentes.</span></span></label><select id="et-modo"><option value="fila"${!et||et.modo!=='paralelo'?' selected':''}>Em fila (sequencial)</option><option value="paralelo"${et&&et.modo==='paralelo'?' selected':''}>Paralelo (simultâneo)</option></select></div>
+    <div class="hora-info form-full" style="grid-column:1/-1">
+      <b>Como funciona o lançamento de horas:</b><br>
+      • <b>Horas previstas:</b> estimativa de quanto tempo esta etapa levará. Use para planejamento.<br>
+      • <b>Horas realizadas:</b> preenchidas automaticamente pelo cronômetro quando você marca como <i>Em andamento</i>.<br>
+      • Ao mudar o status para <b>Em andamento</b> → cronômetro inicia. Para ao <b>Pausar</b> ou <b>Concluir</b>.<br>
+      • <b>1 dia útil = 8 horas</b>. Use o seletor abaixo para inserir em dias ou horas.
+    </div>
+    <div class="form-group form-full" style="background:var(--acbg);padding:8px 10px;border-radius:var(--r);border:1px solid #b8d0f0">
+      <label style="color:var(--ac2)">Esforço previsto</label>
+      <div style="display:flex;gap:7px;align-items:center;margin-top:4px">
+        <select id="et-unidade" onchange="calcEtHoras()" style="padding:6px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:var(--fn);background:var(--sf);width:auto">
+          <option value="horas"${!et||!et.unidade||et.unidade==='horas'?' selected':''}>Horas</option>
+          <option value="dias"${et&&et.unidade==='dias'?' selected':''}>Dias úteis (8h/dia)</option>
+        </select>
+        <input id="et-esforco" type="number" min="0" step="0.5" style="width:80px" value="${et?(et.unidade==='dias'?Math.round((parseFloat(et.horas_prev)||0)/8*10)/10:(parseFloat(et.horas_prev)||8)):1}" onchange="calcEtHoras()" placeholder="0">
+        <span id="et-conv" style="font-size:11px;color:var(--tx2);font-family:var(--mn)"></span>
+      </div>
+      <div style="font-size:11px;color:var(--ac);margin-top:5px"><i class="fa-solid fa-circle-info"></i> Horas salvas: <b id="et-hp-display">${et?et.horas_prev||0:8}h</b> previstas</div>
+    </div>
+    <input type="hidden" id="et-hp" value="${et?et.horas_prev:8}">
+    <div class="form-group"><label>
+      Hrs realizadas
+      <span class="tip" style="margin-left:4px">
+        <span style="cursor:help;color:var(--ac2)">ⓘ</span>
+        <span class="tip-text">Horas já trabalhadas nesta etapa.<br>Preenchido automaticamente pelo cronômetro.<br>Pode editar manualmente se necessário.</span>
+      </span>
+    </label><input id="et-hr" type="number" min="0" step="0.1" value="${et?et.horas_real:0}"></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarEta('${id||''}','${pid}')">${et?'Salvar':'Criar'}</button></div>
+  </div></div>`;
+}
+function calcEtHoras(){
+  const un=document.getElementById('et-unidade')?.value||'horas';
+  const v=parseFloat(document.getElementById('et-esforco')?.value)||0;
+  const h=un==='dias'?Math.round(v*8*10)/10:v;
+  const el=document.getElementById('et-hp');if(el)el.value=h;
+  const disp=document.getElementById('et-hp-display');if(disp)disp.textContent=h+'h';
+  const conv=document.getElementById('et-conv');
+  if(conv)conv.textContent=un==='dias'?(h+'h no total'):(Math.round(v/8*10)/10+' dias úteis');
+}
+function calcTarHoras(){
+  const un=document.getElementById('mt-unidade')?.value||'horas';
+  const v=parseFloat(document.getElementById('mt-esforco')?.value)||0;
+  const h=un==='dias'?Math.round(v*8*10)/10:v;
+  const el=document.getElementById('mt-h');if(el)el.value=h;
+  const disp=document.getElementById('mt-h-display');if(disp)disp.textContent=h+'h';
+  const conv=document.getElementById('mt-conv');
+  if(conv)conv.textContent=un==='dias'?(h+'h no total'):(Math.round(v/8*10)/10+' dias úteis');
+}
+async function salvarEta(id,pId){
+  const nome=document.getElementById('et-n').value.trim();if(!nome)return alert('Informe o nome.');
+  calcEtHoras();
+  const modo=document.getElementById('et-modo')?.value||'fila';
+  const body={projeto_id:pId,nome,responsavel:document.getElementById('et-r').value,status:document.getElementById('et-s').value,inicio:document.getElementById('et-i').value,prazo:document.getElementById('et-pr').value,ordem:document.getElementById('et-o').value||1,horas_prev:document.getElementById('et-hp').value||0,horas_real:document.getElementById('et-hr').value||0,modo,unidade:document.getElementById('et-unidade')?.value||'horas'};
+  const r=id?await api('editarEtapa',{id,...body}):await api('criarEtapa',body);
+  if(r.ok){
+    closeModal();
+    await sincronizar();
+    // Integração com timer
+    const etaId = id || String(r.id);
+    const etaObj = eta.find(x=>String(x.id)===String(etaId)) || body;
+    if(body.status==='Em andamento'){
+      const hrReal = parseFloat(body.horas_real)||0;
+      timerIniciar('etapa', etaId, body.nome||etaObj.nome||'Etapa', etaObj.projeto_id||'', hrReal);
+      toast('⏱ Cronômetro iniciado: "' + (body.nome||'Etapa') + '"');
+    } else if(body.status==='Pausado' || body.status==='Concluído'){
+      if(timerState.ativo && timerState.id===String(etaId)){
+        clearInterval(timerInterval);
+        timerState.ativo=false;
+        localStorage.removeItem('timer_state');
+        document.getElementById('timer-bar').classList.remove('active');
+        document.getElementById('app-shell').classList.remove('timer-on');
+      }
+      toast(id?'Etapa atualizada!':'Etapa criada!');
+    } else {
+      toast(id?'Etapa atualizada!':'Etapa criada!');
+    }
+  } else toast('Erro: '+(r.erro||'falha'),'err');
+}
+
+// ══ MODAL TAREFA ══
+function openModalTar(id){
+  if(id && typeof id === 'object') id = null;
+  const t=id?tar.find(x=>String(x.id)===String(id)):null;
+  const eO=eN().map(n=>`<option${t&&t.eng===n?' selected':''}>${n}</option>`).join('');
+  const pO=proj.map(p=>`<option${t&&t.projeto===p.nome?' selected':''}>${p.nome}</option>`).join('');
+  document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div class="modal-header"><div class="modal-title">${t?'Editar':'Nova'} Tarefa</div><button class="btn btn-sm btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group"><label>Engenheiro</label><select id="mt-e">${eO}</select></div>
+    <div class="form-group"><label>Projeto</label><select id="mt-p">${pO}</select></div>
+    <div class="form-group form-full"><label>Tarefa *</label><input id="mt-t" value="${t?t.tarefa:''}" placeholder="Descreva a tarefa"></div>
+    <div class="form-group">
+      <label>
+        Status da tarefa
+        <span class="tip" style="margin-left:4px"><span style="cursor:help;color:var(--ac2)">ⓘ</span>
+          <span class="tip-text"><b>Pendente:</b> ainda não iniciada.<br><b>Em andamento:</b> ativa — inicia cronômetro ao salvar.<br><b>Pausado:</b> você escolherá o motivo da parada.<br><b>Concluído:</b> encerrada com horas registradas.</span>
+        </span>
+      </label>
+      <select id="mt-s"><option${!t||t.status==='Pendente'?' selected':''}>Pendente</option><option${t&&t.status==='Em andamento'?' selected':''}>Em andamento</option><option${t&&t.status==='Pausado'?' selected':''}>Pausado</option><option${t&&t.status==='Concluído'?' selected':''}>Concluído</option></select>
+      ${t&&t.motivo_pausa?`<div style="margin-top:4px;font-size:11px;color:var(--am)">Último motivo: <b>${t.motivo_pausa}</b></div>`:''}
+    </div>
+    <div class="form-group"><label>Prioridade</label><select id="mt-pr"><option${!t||t.prioridade==='Alta'?' selected':''}>Alta</option><option${t&&t.prioridade==='Média'?' selected':''}>Média</option><option${t&&t.prioridade==='Baixa'?' selected':''}>Baixa</option></select></div>
+    <div class="form-group"><label>Início</label><input id="mt-i" type="date" value="${t?t.inicio||'':''}"></div>
+    <div class="form-group"><label>Prazo</label><input id="mt-pz" type="date" value="${t?t.prazo||'':''}"></div>
+    <div class="hora-info form-full" style="grid-column:1/-1">
+      <b>Lançamento de horas:</b><br>
+      • Ao salvar com status <b>Em andamento</b> → o cronômetro inicia automaticamente.<br>
+      • A barra laranja no topo mostra o tempo decorrido em tempo real.<br>
+      • Clique em <b>Pausar</b> na barra para salvar as horas e interromper. Ao retomar, continua de onde parou.<br>
+      • Se iniciar outra tarefa/etapa, esta é pausada automaticamente.<br>
+      • <b>1 dia útil = 8 horas</b> · Escolha a unidade abaixo.
+    </div>
+    <div class="form-group form-full" style="background:var(--acbg);padding:8px 10px;border-radius:var(--r);border:1px solid #b8d0f0">
+      <label style="color:var(--ac2)">Esforço estimado</label>
+      <div style="display:flex;gap:7px;align-items:center;margin-top:4px">
+        <select id="mt-unidade" onchange="calcTarHoras()" style="padding:6px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:var(--fn);background:var(--sf);width:auto">
+          <option value="horas"${!t||!t.unidade||t.unidade==='horas'?' selected':''}>Horas</option>
+          <option value="dias"${t&&t.unidade==='dias'?' selected':''}>Dias úteis (8h/dia)</option>
+        </select>
+        <input id="mt-esforco" type="number" min="0" step="0.5" style="width:80px" value="${t?(t.unidade==='dias'?Math.round((parseFloat(t.horas)||0)/8*10)/10:(parseFloat(t.horas)||8)):8}" onchange="calcTarHoras()" placeholder="0">
+        <span id="mt-conv" style="font-size:11px;color:var(--tx2);font-family:var(--mn)"></span>
+      </div>
+      <div style="font-size:11px;color:var(--ac);margin-top:5px"><i class="fa-solid fa-circle-info"></i> Total em horas: <b id="mt-h-display">${t?t.horas||8:8}h</b></div>
+    </div>
+    <input type="hidden" id="mt-h" value="${t?t.horas:8}">
+    <div class="form-group"><label>
+      Hrs realizadas
+      <span class="tip" style="margin-left:4px">
+        <span style="cursor:help;color:var(--ac2)">ⓘ</span>
+        <span class="tip-text">Preenchido automaticamente pelo cronômetro.<br>Pode editar manualmente se necessário.</span>
+      </span>
+    </label><input id="mt-hr" type="number" min="0" step="0.1" value="${t?t.horas_real||0:0}"></div>
+    <div class="form-group"><label>Modo</label><select id="mt-modo"><option value="fila"${!t||t.modo!=='paralelo'?' selected':''}>Fila (sequencial)</option><option value="paralelo"${t&&t.modo==='paralelo'?' selected':''}>Paralelo</option></select></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarTar('${id||''}')">${t?'Salvar':'Criar'}</button></div>
+  </div></div>`;
+}
+async function salvarTar(id){
+  const tarefa=document.getElementById('mt-t').value.trim();if(!tarefa)return alert('Informe a tarefa.');
+  calcTarHoras();
+  const modo=document.getElementById('mt-modo')?.value||'fila';
+  const body={eng:document.getElementById('mt-e').value,projeto:document.getElementById('mt-p').value,tarefa,status:document.getElementById('mt-s').value,prioridade:document.getElementById('mt-pr').value,inicio:document.getElementById('mt-i').value,prazo:document.getElementById('mt-pz').value,horas:document.getElementById('mt-h').value||8,horas_real:document.getElementById('mt-hr')?.value||0,modo,unidade:document.getElementById('mt-unidade')?.value||'horas'};
+  const r=id?await api('editarTarefa',{id,...body}):await api('criarTarefa',body);
+  if(r.ok){
+    closeModal();
+    await sincronizar();
+    const tarId = id || String(r.id);
+    const tarObj = tar.find(x=>String(x.id)===String(tarId)) || body;
+    if(body.status==='Em andamento'){
+      const hrReal = parseFloat(tarObj.horas)||0;
+      timerIniciar('tarefa', tarId, body.tarefa||tarObj.tarefa||'Tarefa', body.projeto||tarObj.projeto||'', hrReal);
+      toast('⏱ Cronômetro iniciado: "' + (body.tarefa||'Tarefa') + '"');
+    } else if(body.status==='Pausado' || body.status==='Concluído'){
+      if(timerState.ativo && timerState.id===String(tarId)){
+        clearInterval(timerInterval);
+        timerState.ativo=false;
+        localStorage.removeItem('timer_state');
+        document.getElementById('timer-bar').classList.remove('active');
+        document.getElementById('app-shell').classList.remove('timer-on');
+      }
+      toast(id?'Tarefa atualizada!':'Tarefa criada!');
+    } else {
+      toast(id?'Tarefa atualizada!':'Tarefa criada!');
+    }
+  } else toast('Erro: '+(r.erro||'falha'),'err');
+}
+
+// ══ MODAL ENGENHEIRO ══
+function openModalEng(id){
+  if(id && typeof id === 'object') id = null;
+  const e=id?eng.find(x=>String(x.id)===String(id)):null;
+  document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="width:420px"><div class="modal-header"><div class="modal-title">${e?'Editar':'Novo'} Engenheiro</div><button class="btn btn-sm btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group form-full"><label>Nome *</label><input id="me-n" value="${e?e.nome:''}" placeholder="Nome Sobrenome"></div>
+    <div class="form-group"><label>Cargo</label><input id="me-c" value="${e?e.cargo||'':''}" placeholder="Ex: Engenheiro Elétrico"></div>
+    <div class="form-group"><label>E-mail</label><input id="me-e" value="${e?e.email||'':''}" placeholder="email@empresa.com.br"></div>
+    <div class="form-group form-full"><label>Perfil</label><select id="me-g"><option value="false"${!e||!e.gestor||e.gestor==='false'?' selected':''}>Engenheiro / Projetista</option><option value="true"${e&&(e.gestor===true||e.gestor==='true')?' selected':''}>Gestor</option></select></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarEng('${id||''}')">${e?'Salvar':'Adicionar'}</button></div>
+  </div></div>`;
+}
+async function salvarEng(id){
+  const nome=document.getElementById('me-n').value.trim();if(!nome)return alert('Informe o nome.');
+  const body={nome,cargo:document.getElementById('me-c').value,email:document.getElementById('me-e').value,gestor:document.getElementById('me-g').value};
+  const r=id?await api('editarEngenheiro',{id,...body}):await api('criarEngenheiro',body);
+  if(r.ok){closeModal();await sincronizar();toast(id?'Atualizado!':'Engenheiro adicionado!');}else toast('Erro','err');
+}
+
+// ══ MODAL STAKEHOLDER ══
+function openModalSk(id){
+  if(id && typeof id === 'object') id = null;
+  const s=id?sk.find(x=>String(x.id)===String(id)):null;
+  const nO=['diretor','gestor-senior','gestor','coordenador'].map(nv=>`<option value="${nv}"${s&&s.nivel===nv?' selected':''}>${nv}</option>`).join('');
+  const nts=[{k:'notif_late',l:'Atrasados'},{k:'notif_risk',l:'Em risco'},{k:'notif_done',l:'Concluídos'},{k:'notif_new_proj',l:'Novos proj.'},{k:'notif_weekly',l:'Semanal'}];
+  document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="width:460px"><div class="modal-header"><div class="modal-title">${s?'Editar':'Novo'} Gestor</div><button class="btn btn-sm btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group form-full"><label>Nome *</label><input id="sk-n" value="${s?s.nome:''}" placeholder="Nome completo"></div>
+    <div class="form-group"><label>Cargo</label><input id="sk-c" value="${s?s.cargo||'':''}" placeholder="Diretor de Engenharia"></div>
+    <div class="form-group"><label>E-mail</label><input id="sk-e" value="${s?s.email||'':''}" placeholder="email@empresa.com.br"></div>
+    <div class="form-group"><label>Nível</label><select id="sk-nv">${nO}</select></div>
+    <div class="form-group"><label>Área</label><input id="sk-a" value="${s?s.area||'Geral':'Geral'}" placeholder="Ex: Automação"></div>
+    <div class="form-group form-full"><label>Notificações</label><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px">
+      ${nts.map(nt=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="sk-${nt.k}" ${s&&(s[nt.k]==='true'||s[nt.k]===true)?'checked':''} style="accent-color:var(--ac2)"> ${nt.l}</label>`).join('')}
+    </div></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarSk('${id||''}')">${s?'Salvar':'Criar'}</button></div>
+  </div></div>`;
+}
+async function salvarSk(id){
+  const nome=document.getElementById('sk-n').value.trim();if(!nome)return alert('Informe o nome.');
+  const notifs={late:document.getElementById('sk-notif_late')?.checked,risk:document.getElementById('sk-notif_risk')?.checked,done:document.getElementById('sk-notif_done')?.checked,new_proj:document.getElementById('sk-notif_new_proj')?.checked,weekly:document.getElementById('sk-notif_weekly')?.checked};
+  const body={nome,cargo:document.getElementById('sk-c').value,email:document.getElementById('sk-e').value,nivel:document.getElementById('sk-nv').value,area:document.getElementById('sk-a').value,...notifs};
+  const r=id?await api('editarStakeholder',{id,...body}):await api('criarStakeholder',body);
+  if(r.ok){closeModal();await sincronizar();toast(id?'Atualizado!':'Gestor adicionado!');}else toast('Erro','err');
+}
+
+// ══ MODAL USUÁRIO ══
+function openModalUsr(id){
+  if(id && typeof id === 'object') id = null;
+  const u=id?usr.find(x=>String(x.id)===String(id)):null;
+  document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="width:460px"><div class="modal-header"><div class="modal-title">${u?'Editar':'Novo'} Usuário</div><button class="btn btn-sm btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group form-full"><label>Nome *</label><input id="mu-n" value="${u?u.nome:''}" placeholder="Nome Sobrenome"></div>
+    <div class="form-group form-full"><label>E-mail / Login *</label><input id="mu-e" value="${u?u.email:''}" placeholder="email@empresa.com.br"></div>
+    ${!u||u.perfil!=='superadmin'?`<div class="form-group form-full"><label>Perfil</label><select id="mu-p"><option value="admin"${u&&u.perfil==='admin'?' selected':''}>Administrador</option><option value="gestor"${u&&u.perfil==='gestor'?' selected':''}>Gestor</option><option value="engenheiro"${!u||u.perfil==='engenheiro'?' selected':''}>Engenheiro</option></select></div>`:''}
+    <div class="form-group"><label>Nova senha ${u?'(em branco = manter)':'(padrão: admin1234)'}</label><div style="position:relative"><input id="mu-s" type="password" placeholder="Mínimo 3 caracteres"><button onclick="tv('mu-s','mu-se')" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx2)"><i class="fa-solid fa-eye" id="mu-se"></i></button></div></div>
+    <div class="form-group"><label>Nova senha de recuperação</label><input id="mu-r" type="password" placeholder="Senha de recuperação"></div>
+  </div>
+  ${!u?'<div style="margin-top:9px;padding:8px 9px;background:var(--ambg);border:1px solid #f0c88a;border-radius:var(--r);font-size:12px;color:var(--am)"><i class="fa-solid fa-triangle-exclamation" style="margin-right:4px"></i>Senha vazia = <b>admin1234</b>. Usuário trocará no 1º acesso.</div>':''}
+  </div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarUsr('${id||''}')">${u?'Salvar':'Criar'}</button></div>
+  </div></div>`;
+}
+async function salvarUsr(id){
+  const nome=document.getElementById('mu-n').value.trim(),email=document.getElementById('mu-e').value.trim().toLowerCase();
+  if(!id&&(!nome||!email)){alert('Nome e e-mail obrigatórios.');return;}
+  const perfilEl=document.getElementById('mu-p');
+  const body={nome,email,senha:document.getElementById('mu-s').value,senhaRec:document.getElementById('mu-r').value};
+  if(perfilEl)body.perfil=perfilEl.value;
+  const r=id?await api('editarUsuario',{id,...body}):await api('criarUsuario',body);
+  if(r.ok){closeModal();await sincronizar();renderUsuarios();toast(id?'Usuário atualizado!':'Usuário criado!');}
+  else toast('Erro: '+(r.erro||'falha'),'err');
+}
+
+
+
+// ══ MOTIVO DE PARADA ══
+let _pausaCallback = null; // função a chamar após confirmar motivo
+
+function abrirPausaModal(nomeAtividade, callback){
+  // Reset
+  document.querySelectorAll('.motivo-option').forEach(o => o.classList.remove('selected'));
+  document.querySelectorAll('.motivo-option input[type=radio]').forEach(r => r.checked = false);
+  document.getElementById('motivo-outros-txt').value = '';
+  document.getElementById('motivo-outros-txt').classList.remove('show');
+  document.getElementById('btn-confirmar-pausa').disabled = true;
+  document.getElementById('pausa-nome-sub').textContent = 
+    '"' + nomeAtividade + '" — Registre o motivo da parada para acompanhamento.';
+  _pausaCallback = callback;
+  document.getElementById('pausa-modal').style.display = 'flex';
+}
+
+function fecharPausaModal(){
+  document.getElementById('pausa-modal').style.display = 'none';
+  _pausaCallback = null;
+}
+
+function selecionarMotivo(el, valor){
+  document.querySelectorAll('.motivo-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input[type=radio]').checked = true;
+  const outrosTxt = document.getElementById('motivo-outros-txt');
+  if(valor === 'outros'){
+    outrosTxt.classList.add('show');
+    outrosTxt.focus();
+  } else {
+    outrosTxt.classList.remove('show');
+  }
+  document.getElementById('btn-confirmar-pausa').disabled = false;
+}
+
+function getMotivoSelecionado(){
+  const radio = document.querySelector('.motivo-option input[type=radio]:checked');
+  if(!radio) return null;
+  const valor = radio.value;
+  if(valor === 'outros'){
+    const txt = document.getElementById('motivo-outros-txt').value.trim();
+    return 'Outros: ' + (txt || 'não especificado');
+  }
+  const labels = {
+    outra_atividade: 'Outra atividade',
+    outro_projeto: 'Outro projeto',
+    reuniao: 'Reunião/Treinamento',
+    aguardando: 'Aguardando aprovação',
+    problema_tecnico: 'Problema técnico',
+  };
+  return labels[valor] || valor;
+}
+
+async function confirmarPausa(){
+  const motivo = getMotivoSelecionado();
+  if(!motivo){ toast('Selecione um motivo.','warn'); return; }
+  fecharPausaModal();
+  if(_pausaCallback) await _pausaCallback(motivo);
+}
+
+// Motivo labels em português amigável
+const motivoLabels = {
+  'Outra atividade': {icon:'🔀', cor:'#6b47c4'},
+  'Outro projeto': {icon:'📁', cor:'#2563a8'},
+  'Reunião/Treinamento': {icon:'📅', cor:'#c97a00'},
+  'Aguardando aprovação': {icon:'⏳', cor:'#8b1f1f'},
+  'Problema técnico': {icon:'🔧', cor:'#2d6a3f'},
+};
+function motivoBadge(motivo){
+  if(!motivo) return '';
+  const m = Object.entries(motivoLabels).find(([k])=>motivo.startsWith(k));
+  const icon = m ? m[1].icon : '📝';
+  const label = motivo.length > 22 ? motivo.substring(0,20)+'…' : motivo;
+  return `<span class="motivo-badge" title="${motivo}">${icon} ${label}</span>`;
+}
+
+// ══ TIMER HELPERS — botões rápidos ══
+async function iniciarEtapa(id){
+  const et = eta.find(x=>String(x.id)===String(id));
+  if(!et) return;
+  // Pausa timer anterior se houver
+  if(timerState.ativo && timerState.id!==String(id)) await timerPausarSilencioso();
+  // Muda status para Em andamento
+  const hrReal = parseFloat(et.horas_real)||0;
+  const r = await api('editarEtapa',{id, status:'Em andamento'});
+  if(r.ok){
+    await sincronizar();
+    timerIniciar('etapa', id, et.nome, '', hrReal);
+    toast('⏱ Cronômetro iniciado: "'+et.nome+'"');
+  } else toast('Erro ao iniciar','err');
+}
+async function pausarEtapa(id){
+  const et = eta.find(x=>String(x.id)===String(id));
+  if(!et) return;
+  abrirPausaModal(et.nome, async function(motivo){
+    const h = timerState.ativo && timerState.id===String(id) ? timerGetHorasTotal() : parseFloat(et.horas_real)||0;
+    const r = await api('editarEtapa',{id, status:'Pausado', horas_real: h, motivo_pausa: motivo});
+    if(r.ok){
+      if(timerState.ativo && timerState.id===String(id)){
+        clearInterval(timerInterval);
+        timerState.ativo=false;
+        localStorage.removeItem('timer_state');
+        document.getElementById('timer-bar').classList.remove('active');
+        document.getElementById('app-shell').classList.remove('timer-on');
+      }
+      await sincronizar();
+      toast('Pausado. '+h+'h registradas. Motivo: '+motivo);
+    } else toast('Erro','err');
+  });
+}
+async function iniciarTarefa(id){
+  const t = tar.find(x=>String(x.id)===String(id));
+  if(!t) return;
+  if(timerState.ativo && timerState.id!==String(id)) await timerPausarSilencioso();
+  const hrReal = parseFloat(t.horas)||0;
+  const r = await api('editarTarefa',{id, status:'Em andamento'});
+  if(r.ok){
+    await sincronizar();
+    timerIniciar('tarefa', id, t.tarefa, t.projeto||'', hrReal);
+    toast('⏱ Cronômetro iniciado: "'+t.tarefa+'"');
+  } else toast('Erro ao iniciar','err');
+}
+async function pausarTarefa(id){
+  const t = tar.find(x=>String(x.id)===String(id));
+  if(!t) return;
+  abrirPausaModal(t.tarefa, async function(motivo){
+    const h = timerState.ativo && timerState.id===String(id) ? timerGetHorasTotal() : parseFloat(t.horas)||0;
+    const r = await api('editarTarefa',{id, status:'Pausado', horas_real: h, motivo_pausa: motivo});
+    if(r.ok){
+      if(timerState.ativo && timerState.id===String(id)){
+        clearInterval(timerInterval);
+        timerState.ativo=false;
+        localStorage.removeItem('timer_state');
+        document.getElementById('timer-bar').classList.remove('active');
+        document.getElementById('app-shell').classList.remove('timer-on');
+      }
+      await sincronizar();
+      toast('Pausado. '+h+'h registradas. Motivo: '+motivo);
+    } else toast('Erro','err');
+  });
+}
+
+// ══ EXCLUIR ══
+function confDel(tipo,id){
+  document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop"><div class="confirm-dialog">
+    <div style="font-size:14px;font-weight:600;margin-bottom:7px">Excluir ${tipo}?</div>
+    <p style="font-size:13px;color:var(--tx2)">Esta ação não pode ser desfeita.</p>
+    <div style="display:flex;gap:7px;justify-content:flex-end;margin-top:14px">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="doDel('${tipo}','${id}')"><i class="fa-solid fa-trash-can"></i> Excluir</button>
+    </div>
+  </div></div>`;
+}
+async function doDel(tipo,id){
+  const actions={projeto:'excluirProjeto',tarefa:'excluirTarefa',etapa:'excluirEtapa',engenheiro:'excluirEngenheiro',stakeholder:'excluirStakeholder',usuario:'excluirUsuario'};
+  const r=await api(actions[tipo],{id});
+  if(r.ok){closeModal();await sincronizar();toast('Excluído com sucesso.');}else toast('Erro: '+(r.erro||'falha'),'err');
+}
+
+
+// ══ TIMER SYSTEM ══
+let timerState = {
+  ativo: false,
+  tipo: null,       // 'etapa' ou 'tarefa'
+  id: null,
+  nome: '',
+  projeto: '',
+  inicio: null,     // timestamp ms quando iniciou/retomou
+  acumulado: 0,     // segundos já acumulados antes desta sessão
+};
+let timerInterval = null;
+
+function timerFormatarTempo(seg){
+  const h = Math.floor(seg/3600).toString().padStart(2,'0');
+  const m = Math.floor((seg%3600)/60).toString().padStart(2,'0');
+  const s = Math.floor(seg%60).toString().padStart(2,'0');
+  return h+':'+m+':'+s;
+}
+
+function timerTick(){
+  if(!timerState.ativo) return;
+  const agora = Date.now();
+  const sessaoSeg = Math.floor((agora - timerState.inicio) / 1000);
+  const totalSeg = timerState.acumulado + sessaoSeg;
+  document.getElementById('timer-count').textContent = timerFormatarTempo(totalSeg);
+}
+
+function timerIniciar(tipo, id, nome, projeto, acumuladoHoras){
+  // Se há timer ativo em outra atividade, pausa primeiro
+  if(timerState.ativo && timerState.id !== String(id)){
+    timerPausarSilencioso();
+  }
+  
+  timerState = {
+    ativo: true,
+    tipo,
+    id: String(id),
+    nome,
+    projeto: projeto||'',
+    inicio: Date.now(),
+    acumulado: Math.round((parseFloat(acumuladoHoras)||0) * 3600),
+  };
+  
+  // Salva no localStorage para recuperar se recarregar
+  localStorage.setItem('timer_state', JSON.stringify({
+    tipo, id: String(id), nome, projeto,
+    inicio: timerState.inicio,
+    acumulado: timerState.acumulado,
+  }));
+  
+  // Mostra barra
+  const bar = document.getElementById('timer-bar');
+  bar.classList.add('active');
+  document.getElementById('app-shell').classList.add('timer-on');
+  document.getElementById('timer-name').textContent = nome + (projeto?' — '+projeto:'');
+  
+  clearInterval(timerInterval);
+  timerInterval = setInterval(timerTick, 1000);
+  timerTick();
+}
+
+function timerGetHorasTotal(){
+  if(!timerState.ativo) return 0;
+  const sessaoSeg = Math.floor((Date.now() - timerState.inicio) / 1000);
+  const totalSeg = timerState.acumulado + sessaoSeg;
+  return Math.round(totalSeg / 360) / 10; // arredonda para 0.1h
+}
+
+async function timerSalvar(novoStatus){
+  if(!timerState.id) return;
+  const horas = timerGetHorasTotal();
+  const action = timerState.tipo === 'etapa' ? 'editarEtapa' : 'editarTarefa';
+  const payload = {id: timerState.id, horas_real: horas};
+  if(novoStatus) payload.status = novoStatus;
+  const r = await api(action, payload);
+  if(r.ok){ await sincronizar(); }
+  return horas;
+}
+
+async function timerPausarSilencioso(){
+  if(!timerState.ativo) return;
+  clearInterval(timerInterval);
+  await timerSalvar('Pausado');
+  timerState.ativo = false;
+  timerState.id = null;
+  localStorage.removeItem('timer_state');
+  document.getElementById('timer-bar').classList.remove('active');
+  document.getElementById('app-shell').classList.remove('timer-on');
+}
+
+async function timerPausar(){
+  if(!timerState.ativo) return;
+  clearInterval(timerInterval);
+  const nome = timerState.nome;
+  const idSalvo = timerState.id;
+  const tipoSalvo = timerState.tipo;
+  const tempStr = timerFormatarTempo(timerState.acumulado + Math.floor((Date.now()-timerState.inicio)/1000));
+  abrirPausaModal(nome, async function(motivo){
+    const h = timerGetHorasTotal();
+    const action = tipoSalvo==='etapa'?'editarEtapa':'editarTarefa';
+    const field = tipoSalvo==='etapa'?{id:idSalvo,status:'Pausado',horas_real:h,motivo_pausa:motivo}:{id:idSalvo,status:'Pausado',horas_real:h,motivo_pausa:motivo};
+    const r = await api(action, field);
+    if(r.ok){ await sincronizar(); }
+    toast('Pausado. ' + tempStr + ' registradas em "' + nome + '". Motivo: ' + motivo);
+    timerState.ativo = false;
+    timerState.id = null;
+    localStorage.removeItem('timer_state');
+    document.getElementById('timer-bar').classList.remove('active');
+    document.getElementById('app-shell').classList.remove('timer-on');
+  });
+}
+
+async function timerConcluir(){
+  if(!timerState.ativo) return;
+  clearInterval(timerInterval);
+  const h = await timerSalvar('Concluído');
+  toast('Concluído! ' + h + 'h registradas em "' + timerState.nome + '"');
+  timerState.ativo = false;
+  timerState.id = null;
+  localStorage.removeItem('timer_state');
+  document.getElementById('timer-bar').classList.remove('active');
+  document.getElementById('app-shell').classList.remove('timer-on');
+}
+
+// Recupera timer ao recarregar página
+function timerRecuperar(){
+  try{
+    const saved = localStorage.getItem('timer_state');
+    if(!saved) return;
+    const s = JSON.parse(saved);
+    // Calcula tempo que ficou sem contar (janela fechada)
+    const tempoPerdidoSeg = Math.floor((Date.now() - s.inicio) / 1000);
+    // Só recupera se for menos de 12h (evita timer esquecido)
+    if(tempoPerdidoSeg < 43200){
+      timerState = {
+        ativo: true,
+        tipo: s.tipo,
+        id: String(s.id),
+        nome: s.nome,
+        projeto: s.projeto||'',
+        inicio: Date.now(),
+        acumulado: (s.acumulado||0) + tempoPerdidoSeg,
+      };
+      localStorage.setItem('timer_state', JSON.stringify({
+        ...s, inicio: timerState.inicio, acumulado: timerState.acumulado,
+      }));
+      const bar = document.getElementById('timer-bar');
+      bar.classList.add('active');
+      document.getElementById('app-shell').classList.add('timer-on');
+      document.getElementById('timer-name').textContent = s.nome + (s.projeto?' — '+s.projeto:'');
+      clearInterval(timerInterval);
+      timerInterval = setInterval(timerTick, 1000);
+      timerTick();
+      toast('Cronômetro retomado: "' + s.nome + '"');
+    } else {
+      localStorage.removeItem('timer_state');
+    }
+  }catch(e){ localStorage.removeItem('timer_state'); }
+}
+
+// Salva antes de fechar a janela
+window.addEventListener('beforeunload', function(){
+  if(timerState.ativo){
+    const h = timerGetHorasTotal();
+    // Salva sincronamente via sendBeacon
+    const payload = JSON.stringify({
+      action: timerState.tipo==='etapa'?'editarEtapa':'editarTarefa',
+      id: timerState.id,
+      horas_real: h,
+    });
+    navigator.sendBeacon && navigator.sendBeacon(
+      CFG.apiUrl + '?action=' + (timerState.tipo==='etapa'?'editarEtapa':'editarTarefa'),
+      new Blob([payload], {type:'text/plain'})
+    );
+    // Atualiza acumulado no localStorage para recuperar depois
+    const saved = JSON.parse(localStorage.getItem('timer_state')||'{}');
+    if(saved.id){
+      const sessaoSeg = Math.floor((Date.now()-timerState.inicio)/1000);
+      saved.acumulado = (timerState.acumulado||0) + sessaoSeg;
+      saved.inicio = Date.now();
+      localStorage.setItem('timer_state', JSON.stringify(saved));
+    }
+  }
+});
+
+
+
+// ══ ITENS CRÍTICOS DE COMPRAS ══
+let _icProjId = null;
+let _icItens = []; // itens temporários no modal
+
+// Obtém dados IC de um projeto (localStorage por projeto)
+function getIcProjeto(projId){
+  try{
+    const data = localStorage.getItem('ic_' + projId);
+    return data ? JSON.parse(data) : null;
+  }catch(e){ return null; }
+}
+
+function setIcProjeto(projId, data){
+  localStorage.setItem('ic_' + projId, JSON.stringify(data));
+}
+
+function abrirIcModal(projId){
+  _icProjId = String(projId);
+  const p = proj.find(x => String(x.id) === _icProjId);
+  if(!p) return;
+
+  document.getElementById('ic-modal-proj-nome').textContent = p.nome;
+  const ic = getIcProjeto(_icProjId) || {nao_aplica:false, itens:[], pcp_enviado:false, pcp_data:null};
+  _icItens = [...(ic.itens||[])];
+
+  // Não se aplica
+  document.getElementById('ic-nao-aplica').checked = ic.nao_aplica || false;
+  document.getElementById('ic-itens-section').style.display = ic.nao_aplica ? 'none' : 'block';
+
+  // Renderiza itens
+  renderIcItens();
+
+  // Status PCP
+  atualizarStatusPCP(ic);
+
+  document.getElementById('ic-modal').style.display = 'flex';
+}
+
+function fecharIcModal(){
+  document.getElementById('ic-modal').style.display = 'none';
+  _icProjId = null;
+  _icItens = [];
+}
+
+function toggleNaoAplica(){
+  const checked = document.getElementById('ic-nao-aplica').checked;
+  document.getElementById('ic-itens-section').style.display = checked ? 'none' : 'block';
+}
+
+function renderIcItens(){
+  const lista = document.getElementById('ic-itens-lista');
+  if(!lista) return;
+  if(_icItens.length === 0){
+    lista.innerHTML = '<p style="font-size:12px;color:var(--tx3);padding:6px 0">Nenhum item adicionado ainda. Use o formulário abaixo para adicionar.</p>';
+    return;
+  }
+  lista.innerHTML = _icItens.map((it, i) => `
+    <div class="ic-item-row">
+      <span style="font-size:10px;color:var(--tx3);font-family:var(--mn);min-width:20px">${i+1}</span>
+      <span class="ic-item-nome">${it.nome}</span>
+      <span class="ic-item-qty">${it.qty} un</span>
+      <span class="ic-item-prazo">${it.prazo ? it.prazo.split('-').reverse().join('/') : '—'}</span>
+      <button onclick="removerItemCritico(${i})" class="btn btn-sm btn-icon btn-danger" title="Remover item">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>`).join('');
+}
+
+function adicionarItemCritico(){
+  const nome = document.getElementById('ic-new-nome').value.trim();
+  const qty = parseInt(document.getElementById('ic-new-qty').value) || 1;
+  const prazo = document.getElementById('ic-new-prazo').value;
+
+  if(!nome){ toast('Informe a descrição do item.','warn'); return; }
+
+  _icItens.push({nome, qty, prazo});
+  document.getElementById('ic-new-nome').value = '';
+  document.getElementById('ic-new-qty').value = '1';
+  document.getElementById('ic-new-prazo').value = '';
+  document.getElementById('ic-new-nome').focus();
+  renderIcItens();
+}
+
+function removerItemCritico(idx){
+  _icItens.splice(idx, 1);
+  renderIcItens();
+}
+
+function atualizarStatusPCP(ic){
+  const btns = document.getElementById('ic-pcp-btns');
+  const status = document.getElementById('ic-pcp-status');
+  if(ic.pcp_enviado){
+    btns.style.display = 'none';
+    status.style.display = 'block';
+    status.innerHTML = '<span style="color:var(--gn)">✓ Enviado ao PCP em ' + (ic.pcp_data || '—') + '</span> <button class="btn btn-sm" style="margin-left:8px;font-size:10px" onclick="desfazerEnvioPCP()">Desfazer</button>';
+  } else {
+    btns.style.display = 'flex';
+    status.style.display = 'none';
+  }
+}
+
+function confirmarEnvioPCP(enviou){
+  if(!enviou){
+    toast('OK. O sistema lembrará você amanhã.','warn');
+    // Registra que o engenheiro clicou "não" hoje — não lembra hoje de novo
+    localStorage.setItem('ic_lembrete_' + _icProjId, new Date().toDateString());
+    return;
+  }
+  const ic = getIcProjeto(_icProjId) || {nao_aplica:false, itens:_icItens, pcp_enviado:false};
+  ic.pcp_enviado = true;
+  ic.pcp_data = new Date().toLocaleDateString('pt-BR');
+  setIcProjeto(_icProjId, ic);
+  atualizarStatusPCP(ic);
+  // Remove lembrete pendente
+  localStorage.removeItem('ic_lembrete_' + _icProjId);
+  toast('✓ Confirmado! Lista marcada como enviada ao PCP.');
+  renderProjetos(); // Atualiza badge
+}
+
+function desfazerEnvioPCP(){
+  const ic = getIcProjeto(_icProjId);
+  if(!ic) return;
+  ic.pcp_enviado = false;
+  ic.pcp_data = null;
+  setIcProjeto(_icProjId, ic);
+  atualizarStatusPCP(ic);
+  toast('Confirmação desfeita.','warn');
+  renderProjetos();
+}
+
+function salvarItensCriticos(){
+  if(!_icProjId) return;
+  const naoAplica = document.getElementById('ic-nao-aplica').checked;
+  const ic = getIcProjeto(_icProjId) || {};
+  ic.nao_aplica = naoAplica;
+  ic.itens = naoAplica ? [] : _icItens;
+  if(naoAplica){
+    ic.pcp_enviado = false;
+    ic.pcp_data = null;
+    localStorage.removeItem('ic_lembrete_' + _icProjId);
+  }
+  setIcProjeto(_icProjId, ic);
+  fecharIcModal();
+  renderProjetos();
+  toast(naoAplica ? 'Marcado como "Não se aplica".' : 'Itens críticos salvos!');
+}
+
+// ── LEMBRETE DIÁRIO ──
+function verificarLembretes(){
+  // Só lembra o líder dos projetos
+  if(!sess) return;
+  const hoje = new Date().toDateString();
+
+  // Projetos onde o usuário é líder e tem IC pendente
+  const pendentes = proj.filter(p => {
+    // Só mostra para o líder do projeto
+    if(p.lider !== sess.nome && sess.perfil !== 'superadmin') return false;
+    const ic = getIcProjeto(p.id);
+    if(!ic) return false; // sem IC cadastrado = sem lembrete
+    if(ic.nao_aplica) return false; // não se aplica = sem lembrete
+    if(ic.pcp_enviado) return false; // já enviou = sem lembrete
+    if(!ic.itens || ic.itens.length === 0) return false; // sem itens = sem lembrete
+
+    // Verifica se já lembrou hoje
+    const ultimoLembrete = localStorage.getItem('ic_lembrete_' + p.id);
+    if(ultimoLembrete === hoje) return false;
+
+    return true;
+  });
+
+  if(pendentes.length === 0) return;
+
+  // Mostra lembrete
+  document.getElementById('lembrete-proj-list').innerHTML = pendentes.map(p => {
+    const ic = getIcProjeto(p.id);
+    return `<b>• ${p.nome}</b> — ${ic.itens.length} item(ns) crítico(s) pendente(s)`;
+  }).join('<br>');
+
+  document.getElementById('lembrete-overlay').style.display = 'flex';
+
+  // Registra que mostrou o lembrete hoje para cada projeto
+  pendentes.forEach(p => {
+    localStorage.setItem('ic_lembrete_' + p.id, hoje);
+  });
+}
+
+function irParaProjetos(){
+  document.getElementById('lembrete-overlay').style.display = 'none';
+  // Navega para projetos
+  const btn = document.querySelector('.nav-btn');
+  goPage('projetos', btn);
+}
+
+// ══ RELATÓRIO DE PARADAS ══
+let relCharts = {};
+
+// Coleta todas as paradas de etapas e tarefas
+function coletarParadas(filtEng, filtProj, filtTipo){
+  const paradas = [];
+
+  // De etapas
+  eta.forEach(et => {
+    if(!et.motivo_pausa) return;
+    const prj = proj.find(p => String(p.id) === String(et.projeto_id));
+    const nomeProj = prj ? prj.nome : '—';
+    const engNome = et.responsavel || '—';
+    if(filtEng && engNome !== filtEng) return;
+    if(filtProj && nomeProj !== filtProj) return;
+    const motivo = et.motivo_pausa;
+    if(filtTipo && !motivo.toLowerCase().includes(filtTipo.toLowerCase())) return;
+    paradas.push({
+      tipo: 'Etapa',
+      atividade: et.nome,
+      eng: engNome,
+      projeto: nomeProj,
+      motivo: motivo,
+      horas: parseFloat(et.horas_real)||0,
+      data: et.prazo || '',
+    });
+  });
+
+  // De tarefas
+  tar.forEach(t => {
+    if(!t.motivo_pausa) return;
+    if(filtEng && t.eng !== filtEng) return;
+    if(filtProj && t.projeto !== filtProj) return;
+    const motivo = t.motivo_pausa;
+    if(filtTipo && !motivo.toLowerCase().includes(filtTipo.toLowerCase())) return;
+    paradas.push({
+      tipo: 'Tarefa',
+      atividade: t.tarefa,
+      eng: t.eng || '—',
+      projeto: t.projeto || '—',
+      motivo: motivo,
+      horas: parseFloat(t.horas_real)||0,
+      data: t.prazo || '',
+    });
+  });
+
+  return paradas;
+}
+
+function popularFiltrosRel(){
+  const fEng = document.getElementById('rf-eng');
+  const fProj = document.getElementById('rf-proj');
+  if(!fEng || !fProj) return;
+  const engV = fEng.value, projV = fProj.value;
+  fEng.innerHTML = '<option value="">Todos engenheiros</option>' + eng.map(e=>`<option${e.nome===engV?' selected':''}>${e.nome}</option>`).join('');
+  fProj.innerHTML = '<option value="">Todos projetos</option>' + proj.map(p=>`<option${p.nome===projV?' selected':''}>${p.nome}</option>`).join('');
+}
+
+
+function renderIcResumo(){
+  const lista = document.getElementById('ic-resumo-lista');
+  if(!lista) return;
+
+  const rows = proj.map(p => {
+    const ic = getIcProjeto(p.id);
+    let status, statusHtml, detalhes = '';
+    if(!ic){
+      status = 'sem_ic';
+      statusHtml = '<span class="badge bg-gray" style="font-size:10px">Sem cadastro</span>';
+    } else if(ic.nao_aplica){
+      status = 'na';
+      statusHtml = '<span class="badge bg-gray" style="font-size:10px">Não se aplica</span>';
+    } else if(ic.itens && ic.itens.length > 0){
+      if(ic.pcp_enviado){
+        status = 'ok';
+        statusHtml = '<span class="badge bg-green" style="font-size:10px">✓ Enviado ao PCP em ' + ic.pcp_data + '</span>';
+      } else {
+        status = 'pendente';
+        statusHtml = '<span class="badge bg-amber" style="font-size:10px">⚠ Aguardando envio ao PCP</span>';
+      }
+      detalhes = ic.itens.length + ' item(ns)';
+    } else {
+      status = 'vazio';
+      statusHtml = '<span class="badge bg-amber" style="font-size:10px">Lista vazia</span>';
+    }
+    return {p, status, statusHtml, detalhes, ic};
+  });
+
+  if(rows.length === 0){
+    lista.innerHTML = '<p style="font-size:12px;color:var(--tx3)">Nenhum projeto cadastrado.</p>';
+    return;
+  }
+
+  lista.innerHTML = `<table class="rel-table">
+    <thead><tr><th>Projeto</th><th>Líder</th><th>Status IC</th><th>Itens</th><th>Ação</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td style="font-weight:500">${r.p.nome}</td>
+      <td>${r.p.lider||'—'}</td>
+      <td>${r.statusHtml}</td>
+      <td style="font-family:var(--mn);text-align:center">${r.detalhes||'—'}</td>
+      <td><button class="btn btn-sm" onclick="abrirIcModal('${r.p.id}')">Gerenciar</button></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function exportarIcExcel(){
+  if(typeof XLSX === 'undefined'){ toast('Biblioteca Excel não carregada.','err'); return; }
+  const wb = XLSX.utils.book_new();
+
+  // Aba resumo por projeto
+  const resumoData = [
+    ['Projeto','Líder','Status','Qtd Itens','PCP Confirmado','Data Confirmação'],
+    ...proj.map(p => {
+      const ic = getIcProjeto(p.id);
+      if(!ic) return [p.nome, p.lider||'—', 'Sem cadastro', 0, 'Não', '—'];
+      if(ic.nao_aplica) return [p.nome, p.lider||'—', 'Não se aplica', 0, '—', '—'];
+      return [p.nome, p.lider||'—', ic.pcp_enviado?'Enviado':'Pendente', (ic.itens||[]).length, ic.pcp_enviado?'Sim':'Não', ic.pcp_data||'—'];
+    })
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumoData), 'Resumo IC');
+
+  // Aba detalhe de itens
+  const detData = [['Projeto','Líder','Item','Quantidade','Prazo Necessário','PCP Enviado']];
+  proj.forEach(p => {
+    const ic = getIcProjeto(p.id);
+    if(!ic || ic.nao_aplica || !ic.itens || ic.itens.length === 0) return;
+    ic.itens.forEach(it => {
+      detData.push([p.nome, p.lider||'—', it.nome, it.qty, it.prazo?it.prazo.split('-').reverse().join('/'):'—', ic.pcp_enviado?'Sim':'Não']);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detData), 'Itens Críticos');
+
+  const empresa = cfg.empresa || 'Gestao';
+  const data = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  XLSX.writeFile(wb, `Itens_Criticos_${empresa}_${data}.xlsx`);
+  toast('Relatório de Itens Críticos exportado!');
+}
+
+function renderRelatorio(){
+  // Renderiza resumo de IC
+  renderIcResumo();
+  const filtEng = document.getElementById('rf-eng')?.value || '';
+  const filtProj = document.getElementById('rf-proj')?.value || '';
+  const filtTipo = document.getElementById('rf-tipo')?.value || '';
+  const paradas = coletarParadas(filtEng, filtProj, filtTipo);
+
+  // Destrói gráficos anteriores
+  Object.values(relCharts).forEach(c => { try{c.destroy()}catch(e){} });
+  relCharts = {};
+
+  const mn = 'IBM Plex Mono';
+  const cores = ['#1a3a5c','#2563a8','#2d6a3f','#c97a00','#8b1f1f','#3d2080','#666'];
+
+  // ── ESTATÍSTICAS ──
+  const totalParadas = paradas.length;
+  const engSet = [...new Set(paradas.map(p=>p.eng))].length;
+  const projSet = [...new Set(paradas.map(p=>p.projeto))].length;
+  const hrsTotais = paradas.reduce((a,p)=>a+p.horas,0).toFixed(1);
+
+  document.getElementById('rel-stats').innerHTML = `
+    <div class="rel-stat-item"><div class="rel-stat-num" style="color:var(--ac)">${totalParadas}</div><div class="rel-stat-lbl">Total de paradas</div></div>
+    <div class="rel-stat-item"><div class="rel-stat-num" style="color:var(--am)">${engSet}</div><div class="rel-stat-lbl">Engenheiros</div></div>
+    <div class="rel-stat-item"><div class="rel-stat-num" style="color:var(--pu)">${projSet}</div><div class="rel-stat-lbl">Projetos afetados</div></div>
+    <div class="rel-stat-item"><div class="rel-stat-num" style="color:var(--gn)">${hrsTotais}h</div><div class="rel-stat-lbl">Horas no momento das paradas</div></div>
+  `;
+
+  if(totalParadas === 0){
+    document.getElementById('rel-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--tx3);padding:18px">Nenhuma parada registrada com os filtros selecionados.</td></tr>';
+    ['rc-motivos','rc-eng','rc-proj','rc-dia'].forEach(id=>{
+      const ctx = document.getElementById(id);
+      if(ctx){ ctx.parentElement.innerHTML = '<div id="'+id+'-w" style="position:relative"><canvas id="'+id+'"></canvas></div><p style="text-align:center;color:var(--tx3);font-size:12px;padding:20px">Sem dados</p>'; }
+    });
+    return;
+  }
+
+  // ── GRÁFICO MOTIVOS (pizza) ──
+  const motivoMap = {};
+  paradas.forEach(p => {
+    const k = p.motivo.split(':')[0].trim();
+    motivoMap[k] = (motivoMap[k]||0) + 1;
+  });
+  const mLabels = Object.keys(motivoMap);
+  const mData = Object.values(motivoMap);
+
+  relCharts.motivos = new Chart(document.getElementById('rc-motivos'), {
+    type: 'doughnut',
+    data: { labels: mLabels, datasets:[{ data: mData, backgroundColor: cores, borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:10,family:mn}, boxWidth:10, padding:6 } } } }
+  });
+
+  // ── GRÁFICO POR ENGENHEIRO (barras horizontais) ──
+  const engMap = {};
+  paradas.forEach(p => { engMap[p.eng.split(' ')[0]] = (engMap[p.eng.split(' ')[0]]||0)+1; });
+  const eLabels = Object.keys(engMap);
+  const eData = Object.values(engMap);
+  const engH = Math.max(120, eLabels.length*36+46);
+  document.getElementById('rc-eng-w').style.height = engH+'px';
+
+  relCharts.eng = new Chart(document.getElementById('rc-eng'), {
+    type: 'bar',
+    data: { labels: eLabels, datasets:[{ label:'Paradas', data: eData, backgroundColor:'#2563a8', borderRadius:3 }] },
+    options: { responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{beginAtZero:true,ticks:{font:{size:10,family:mn}}}, y:{ticks:{font:{size:10,family:mn}}} } }
+  });
+
+  // ── GRÁFICO POR PROJETO (barras horizontais) ──
+  const projMap = {};
+  paradas.forEach(p => { const k=p.projeto.length>18?p.projeto.substr(0,16)+'…':p.projeto; projMap[k]=(projMap[k]||0)+1; });
+  const pLabels = Object.keys(projMap);
+  const pData = Object.values(projMap);
+  const projH = Math.max(120, pLabels.length*36+46);
+  document.getElementById('rc-proj-w').style.height = projH+'px';
+
+  relCharts.proj = new Chart(document.getElementById('rc-proj'), {
+    type: 'bar',
+    data: { labels: pLabels, datasets:[{ label:'Paradas', data: pData, backgroundColor:'#2d6a3f', borderRadius:3 }] },
+    options: { responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{beginAtZero:true,ticks:{font:{size:10,family:mn}}}, y:{ticks:{font:{size:10,family:mn}}} } }
+  });
+
+  // ── GRÁFICO POR DIA DA SEMANA ──
+  const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const diaMap = {Dom:0,Seg:0,Ter:0,Qua:0,Qui:0,Sex:0,Sáb:0};
+  paradas.forEach(p => {
+    if(p.data){
+      try{
+        const d = new Date(p.data+'T00:00:00');
+        diaMap[dias[d.getDay()]] = (diaMap[dias[d.getDay()]]||0)+1;
+      }catch(e){}
+    }
+  });
+
+  relCharts.dia = new Chart(document.getElementById('rc-dia'), {
+    type: 'bar',
+    data: { labels: dias, datasets:[{ label:'Paradas', data: dias.map(d=>diaMap[d]||0), backgroundColor: dias.map((_,i)=>i===0||i===6?'#e0dfd7':'#1a3a5c'), borderRadius:3 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ x:{ticks:{font:{size:10,family:mn}}}, y:{beginAtZero:true,ticks:{font:{size:10,family:mn},stepSize:1}} } }
+  });
+
+  // ── TABELA DETALHADA ──
+  const motivoIcons = {
+    'Outra atividade':'🔀','Outro projeto':'📁','Reunião/Treinamento':'📅',
+    'Aguardando aprovação':'⏳','Problema técnico':'🔧','Outros':'📝',
+  };
+  document.getElementById('rel-tbody').innerHTML = paradas.map((p,i) => {
+    const icon = Object.entries(motivoIcons).find(([k])=>p.motivo.startsWith(k));
+    const ic = icon ? icon[1] : '📝';
+    const motivoFull = p.motivo.length > 40 ? `<span title="${p.motivo}">${p.motivo.substr(0,38)}…</span>` : p.motivo;
+    return `<tr>
+      <td style="font-family:var(--mn);font-size:11px;color:var(--tx2)">${p.data?p.data.split('-').reverse().join('/'):'—'}</td>
+      <td style="font-weight:500">${p.eng}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.atividade}">${p.tipo==='Etapa'?'📋':'✅'} ${p.atividade}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.projeto}</td>
+      <td><span class="badge ${p.tipo==='Etapa'?'bg-blue':'bg-green'}" style="font-size:10px">${p.tipo}</span></td>
+      <td>${ic} ${motivoFull}</td>
+      <td style="text-align:right;font-family:var(--mn)">${p.horas}h</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── EXPORTAR EXCEL ──
+function exportarRelatorio(){
+  if(typeof XLSX === 'undefined'){ toast('Biblioteca Excel não carregada. Verifique a conexão.','err'); return; }
+  const filtEng = document.getElementById('rf-eng')?.value || '';
+  const filtProj = document.getElementById('rf-proj')?.value || '';
+  const filtTipo = document.getElementById('rf-tipo')?.value || '';
+  const paradas = coletarParadas(filtEng, filtProj, filtTipo);
+
+  if(paradas.length === 0){ toast('Sem dados para exportar.','warn'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // Aba 1: Resumo por motivo
+  const motivoMap = {};
+  paradas.forEach(p => {
+    const k = p.motivo.split(':')[0].trim();
+    if(!motivoMap[k]) motivoMap[k] = {motivo:k, quantidade:0, horas:0};
+    motivoMap[k].quantidade++;
+    motivoMap[k].horas = +(motivoMap[k].horas + p.horas).toFixed(1);
+  });
+  const resumoData = [
+    ['Motivo de Parada','Quantidade','Horas acumuladas','% do total'],
+    ...Object.values(motivoMap).map(m=>[m.motivo, m.quantidade, m.horas, ((m.quantidade/paradas.length)*100).toFixed(1)+'%'])
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumoData), 'Por Motivo');
+
+  // Aba 2: Por engenheiro
+  const engMap2 = {};
+  paradas.forEach(p => {
+    if(!engMap2[p.eng]) engMap2[p.eng] = {eng:p.eng, quantidade:0, horas:0};
+    engMap2[p.eng].quantidade++;
+    engMap2[p.eng].horas = +(engMap2[p.eng].horas + p.horas).toFixed(1);
+  });
+  const engData = [
+    ['Engenheiro','Paradas','Horas acumuladas'],
+    ...Object.values(engMap2).map(e=>[e.eng, e.quantidade, e.horas])
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(engData), 'Por Engenheiro');
+
+  // Aba 3: Por projeto
+  const projMap2 = {};
+  paradas.forEach(p => {
+    if(!projMap2[p.projeto]) projMap2[p.projeto] = {proj:p.projeto, quantidade:0};
+    projMap2[p.projeto].quantidade++;
+  });
+  const projData = [
+    ['Projeto','Paradas'],
+    ...Object.values(projMap2).map(p=>[p.proj, p.quantidade])
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(projData), 'Por Projeto');
+
+  // Aba 4: Histórico completo
+  const histData = [
+    ['Data','Engenheiro','Atividade','Tipo','Projeto','Motivo','Horas acumuladas'],
+    ...paradas.map(p=>[
+      p.data?p.data.split('-').reverse().join('/'):'—',
+      p.eng, p.atividade, p.tipo, p.projeto, p.motivo, p.horas
+    ])
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(histData), 'Histórico Completo');
+
+  // Gera o arquivo
+  const empresa = cfg.empresa || 'Gestao';
+  const data = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  XLSX.writeFile(wb, `Relatorio_Paradas_${empresa}_${data}.xlsx`);
+  toast('Relatório exportado com sucesso!');
+}
+
+// ══ HELP PANEL ══
+function toggleHelp(){
+  const panel = document.getElementById('help-panel');
+  const overlay = document.getElementById('help-overlay');
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+}
+
+// ══ INIT ══
+const yr=new Date().getFullYear();
+['setup-yr','cfg-yr','ftr-yr'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=yr;});
+document.getElementById('sid-date').textContent=TODAY.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+
+// ── INICIALIZAÇÃO ──────────────────────────────────
+CFG = {
+  sheetId: '11Uhqdtt4UtBo9EltU-dsjX9uAwf0XEIcQaOyIw0b9-8',
+  apiUrl:  'https://script.google.com/macros/s/AKfycbxkcik7waks2_SlLbRSC03sQ3tRnYMfKGeb3x3cU_XpzZswHljmjWBAEOWrlHrTFOvD/exec',
+  empresa: 'Megatec Engenharia'
+};
+localStorage.setItem(LC, JSON.stringify(CFG));
+
+// Atualiza nome da empresa na tela
+const _ec = document.getElementById('setup-company');
+if(_ec) _ec.textContent = CFG.empresa;
+
+// Verifica se há sessão válida salva
+let _sessaoRestaurada = false;
+try{
+  const _ss = localStorage.getItem(LS);
+  if(_ss){
+    const _s = JSON.parse(_ss);
+    const _h = (Date.now() - new Date(_s.loginEm)) / 3600000;
+    if(_h < 8){ sess = _s; _sessaoRestaurada = true; }
+  }
+}catch(e){ console.warn('Sessão inválida:', e); }
+
+// Vai para login ou restaura sessão
+if(_sessaoRestaurada){
+  carregar();
+} else {
+  showSS('ss-login');
+}
+</script>
+</body>
+</html>
