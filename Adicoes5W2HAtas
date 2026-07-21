@@ -1,0 +1,197 @@
+/**
+ * ADIÇÕES AO Code.gs — 5W2H (Plano de Ação) + Atas de Reunião
+ * ==============================================================
+ * ⚠️ IMPORTANTE: eu (Claude) não tive acesso ao Code.gs real do Marcelo nesta
+ * rodada — só ao index.html. Este arquivo é um MELHOR ESFORÇO, escrito para
+ * seguir os mesmos nomes de ação e formato de payload que o novo index.html
+ * já está chamando (ver PROMPT_GESTAO2_v9.md, Seções 21 e 22). Antes de usar:
+ *
+ *   1. Ajuste SHEET_ACOES5W2H / SHEET_ATAS se seus nomes de aba forem outros.
+ *   2. Troque as 3 marcações "TODO INTEGRAÇÃO" abaixo pelos nomes reais das
+ *      suas funções de autenticação, resposta JSON e roteamento de ações.
+ *   3. Rode getColunas_() (função de apoio no fim do arquivo) uma vez para
+ *      conferir se os cabeçalhos das novas abas batem com o que o código espera.
+ *   4. Teste em uma CÓPIA da planilha antes de aplicar na de produção.
+ *
+ * Estrutura de dados:
+ *  - Aba "Acoes5W2H": id | titulo | oQue | porQue | onde | quando | quem | como |
+ *    quantoCusta | status | projetoId | ataId | tarefaId | criadoPor | criadoEm |
+ *    atualizadoEm | arquivado
+ *  - Aba "Atas": id | titulo | data | local | participantes | pauta | decisoes |
+ *    proximaReuniao | responsavel | criadoPor | criadoEm | atualizadoEm | arquivado
+ *
+ *  Os "encaminhamentos" de uma ata NÃO têm aba própria — são linhas de
+ *  Acoes5W2H com ataId preenchido. Uma única fonte de verdade, sem duplicar
+ *  estrutura (mesma ideia de Etapas/Tarefas apontando para projeto_id).
+ */
+
+const SHEET_ACOES5W2H = 'Acoes5W2H';
+const SHEET_ATAS = 'Atas';
+
+const COLUNAS_ACOES5W2H = ['id','titulo','oQue','porQue','onde','quando','quem','como','quantoCusta','status','projetoId','ataId','tarefaId','criadoPor','criadoEm','atualizadoEm','arquivado'];
+const COLUNAS_ATAS = ['id','titulo','data','local','participantes','pauta','decisoes','proximaReuniao','responsavel','criadoPor','criadoEm','atualizadoEm','arquivado'];
+
+/** Garante que as duas abas existam com o cabeçalho certo. Rode uma vez manualmente. */
+function garantirAbas5W2HEAtas_(){
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  [[SHEET_ACOES5W2H, COLUNAS_ACOES5W2H], [SHEET_ATAS, COLUNAS_ATAS]].forEach(([nome, colunas])=>{
+    let sh = ss.getSheetByName(nome);
+    if(!sh){ sh = ss.insertSheet(nome); sh.appendRow(colunas); sh.setFrozenRows(1); }
+  });
+}
+
+/** Lê uma aba inteira como array de objetos, usando a 1ª linha como cabeçalho. */
+function lerAbaComoObjetos_(nomeAba){
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nomeAba);
+  if(!sh) return [];
+  const valores = sh.getDataRange().getValues();
+  if(valores.length < 2) return [];
+  const cab = valores[0];
+  return valores.slice(1).filter(l=>l[0]!=='').map(l=>{
+    const obj = {};
+    cab.forEach((c,i)=> obj[c] = l[i]);
+    return obj;
+  });
+}
+
+/** Acrescenta uma linha nova gerando id via Utilities.getUuid(). Retorna o id gerado. */
+function inserirLinha_(nomeAba, colunas, dados, usuarioEmail){
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nomeAba);
+  const id = Utilities.getUuid();
+  const agora = new Date();
+  const linha = colunas.map(c=>{
+    if(c==='id') return id;
+    if(c==='criadoPor') return usuarioEmail||'';
+    if(c==='criadoEm' || c==='atualizadoEm') return agora;
+    if(c==='arquivado') return false;
+    return dados[c] !== undefined ? dados[c] : '';
+  });
+  sh.appendRow(linha);
+  return id;
+}
+
+/** Atualiza a linha de um id existente, só nas colunas presentes em `dados`. */
+function atualizarLinhaPorId_(nomeAba, colunas, id, dados){
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nomeAba);
+  const valores = sh.getDataRange().getValues();
+  const idxId = colunas.indexOf('id');
+  const idxAtualizadoEm = colunas.indexOf('atualizadoEm');
+  for(let i=1;i<valores.length;i++){
+    if(String(valores[i][idxId]) === String(id)){
+      colunas.forEach((c,j)=>{
+        if(c==='id' || c==='criadoPor' || c==='criadoEm') return; // nunca sobrescreve
+        if(dados[c] !== undefined) sh.getRange(i+1, j+1).setValue(dados[c]);
+      });
+      if(idxAtualizadoEm>-1) sh.getRange(i+1, idxAtualizadoEm+1).setValue(new Date());
+      return true;
+    }
+  }
+  return false;
+}
+
+function arquivarPorId_(nomeAba, colunas, id){
+  return atualizarLinhaPorId_(nomeAba, colunas, id, {arquivado:true});
+}
+
+// ══════════════════════════════════════════════════════════════
+// AÇÕES — chame estas funções a partir do SEU roteador de `action` existente
+// (TODO INTEGRAÇÃO 1: troque `sessaoValida_(token)` pela sua função real de
+// checagem de sessão/token, se o nome for diferente).
+// ══════════════════════════════════════════════════════════════
+
+function acaoGetTudo_AcrescentarAcoes5W2HEAtas_(dadosResposta){
+  // Chame isto dentro da SUA função getTudo(), antes de retornar o JSON,
+  // para incluir os dois novos arrays na mesma resposta que já traz
+  // projetos/etapas/tarefas/engenheiros etc.
+  dadosResposta.acoes5w2h = lerAbaComoObjetos_(SHEET_ACOES5W2H).filter(a=>!a.arquivado);
+  dadosResposta.atas = lerAbaComoObjetos_(SHEET_ATAS).filter(a=>!a.arquivado);
+  return dadosResposta;
+}
+
+function acaoCriarAcao5w2h(payload, usuarioEmail){
+  if(!payload.titulo) return {ok:false, erro:'Título é obrigatório.'};
+  const id = inserirLinha_(SHEET_ACOES5W2H, COLUNAS_ACOES5W2H, payload, usuarioEmail);
+  return {ok:true, id};
+}
+function acaoEditarAcao5w2h(payload, usuarioEmail){
+  if(!payload.id) return {ok:false, erro:'id é obrigatório.'};
+  const ok = atualizarLinhaPorId_(SHEET_ACOES5W2H, COLUNAS_ACOES5W2H, payload.id, payload);
+  return ok ? {ok:true} : {ok:false, erro:'Ação 5W2H não encontrada.'};
+}
+function acaoArquivarAcao5w2h(payload){
+  if(!payload.id) return {ok:false, erro:'id é obrigatório.'};
+  const ok = arquivarPorId_(SHEET_ACOES5W2H, COLUNAS_ACOES5W2H, payload.id);
+  return ok ? {ok:true} : {ok:false, erro:'Ação 5W2H não encontrada.'};
+}
+
+function acaoCriarAta(payload, usuarioEmail){
+  if(!payload.titulo) return {ok:false, erro:'Título é obrigatório.'};
+  const id = inserirLinha_(SHEET_ATAS, COLUNAS_ATAS, payload, usuarioEmail);
+  return {ok:true, id};
+}
+function acaoEditarAta(payload){
+  if(!payload.id) return {ok:false, erro:'id é obrigatório.'};
+  const ok = atualizarLinhaPorId_(SHEET_ATAS, COLUNAS_ATAS, payload.id, payload);
+  return ok ? {ok:true} : {ok:false, erro:'Ata não encontrada.'};
+}
+function acaoArquivarAta(payload){
+  if(!payload.id) return {ok:false, erro:'id é obrigatório.'};
+  const ok = arquivarPorId_(SHEET_ATAS, COLUNAS_ATAS, payload.id);
+  return ok ? {ok:true} : {ok:false, erro:'Ata não encontrada.'};
+}
+
+/**
+ * Converte uma Ação 5W2H em Tarefa real do sistema.
+ * TODO INTEGRAÇÃO 2: troque a chamada a `criarTarefaInterna_` pela SUA função
+ * real de criação de tarefa (provavelmente já existe algo assim por trás da
+ * ação 'criarTarefa' que o index.html já chama para o modal normal de Tarefa —
+ * reaproveite a mesma função/lógica em vez de duplicar o INSERT na aba Tarefas).
+ */
+function acaoConverterAcaoEmTarefa(payload, usuarioEmail){
+  const acaoId = payload.acaoId, projetoId = payload.projetoId, etapaId = payload.etapaId;
+  if(!acaoId || !projetoId || !etapaId) return {ok:false, erro:'acaoId, projetoId e etapaId são obrigatórios.'};
+
+  const acoes = lerAbaComoObjetos_(SHEET_ACOES5W2H);
+  const acao = acoes.find(a=>String(a.id)===String(acaoId));
+  if(!acao) return {ok:false, erro:'Ação 5W2H não encontrada.'};
+  if(acao.tarefaId) return {ok:false, erro:'Esta ação já foi convertida em tarefa.'};
+
+  // TODO INTEGRAÇÃO 2 — substitua esta linha pela chamada real:
+  // const tarefaId = criarTarefaInterna_({ etapa_id: etapaId, descricao: acao.titulo,
+  //   eng: acao.quem, prazo: acao.quando, status: 'Pendente', notas: acao.como||'' }, usuarioEmail);
+  const tarefaId = null; // placeholder — implementar conforme o Code.gs real
+
+  if(!tarefaId) return {ok:false, erro:'Integração com criação de Tarefa ainda não implementada — ver TODO INTEGRAÇÃO 2 neste arquivo.'};
+
+  atualizarLinhaPorId_(SHEET_ACOES5W2H, COLUNAS_ACOES5W2H, acaoId, {tarefaId});
+  return {ok:true, tarefaId};
+}
+
+/**
+ * TODO INTEGRAÇÃO 3 — no seu roteador de `doPost(e)` (o switch/if que já trata
+ * 'criarProjeto', 'criarTarefa' etc.), adicione:
+ *
+ *   case 'criarAcao5w2h':          return resposta_(acaoCriarAcao5w2h(payload, usuarioEmail));
+ *   case 'editarAcao5w2h':         return resposta_(acaoEditarAcao5w2h(payload, usuarioEmail));
+ *   case 'arquivarAcao5w2h':       return resposta_(acaoArquivarAcao5w2h(payload));
+ *   case 'criarAta':               return resposta_(acaoCriarAta(payload, usuarioEmail));
+ *   case 'editarAta':              return resposta_(acaoEditarAta(payload));
+ *   case 'arquivarAta':            return resposta_(acaoArquivarAta(payload));
+ *   case 'converterAcaoEmTarefa':  return resposta_(acaoConverterAcaoEmTarefa(payload, usuarioEmail));
+ *
+ * (troque `resposta_` pelo nome real do seu helper de resposta JSON, e
+ * `usuarioEmail`/`payload` pelos nomes reais das variáveis já extraídas do
+ * `e.postData` no topo do seu doPost — o index.html sempre manda o payload
+ * como um objeto plano igual aos das outras ações já existentes.)
+ *
+ * E dentro da SUA função getTudo(), logo antes do `return`, chame:
+ *   dados = acaoGetTudo_AcrescentarAcoes5W2HEAtas_(dados);
+ */
+
+/** Função de apoio: roda uma vez manualmente para conferir se as abas e
+ * cabeçalhos ficaram como o código espera. Olhe o log de execução. */
+function getColunas_(){
+  garantirAbas5W2HEAtas_();
+  Logger.log('Acoes5W2H: ' + JSON.stringify(lerAbaComoObjetos_(SHEET_ACOES5W2H).slice(0,3)));
+  Logger.log('Atas: ' + JSON.stringify(lerAbaComoObjetos_(SHEET_ATAS).slice(0,3)));
+}
