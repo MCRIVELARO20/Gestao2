@@ -747,7 +747,7 @@ tr:hover td{background:var(--sf2)}
     <button class="nav-btn" id="nav-mapas" onclick="goPage('mapas',this)"><i class="fa-solid fa-diagram-project"></i><span>Mapas Mentais</span></button>
     <button class="nav-btn" id="nav-inovacao" onclick="goPage('inovacao',this)"><i class="fa-solid fa-chart-line"></i><span>Painel de Inovação</span></button>
     <div class="nav-sec">Propriedade Intelectual</div>
-    <button class="nav-btn" id="nav-patentes" onclick="goPage('patentes',this)"><i class="fa-solid fa-stamp"></i><span>Patentes</span><span class="nav-badge" id="badge-patentes" style="display:none" title="Prazos vencendo nos próximos 60 dias">0</span></button>
+    <button class="nav-btn" id="nav-patentes" onclick="goPage('patentes',this)" style="display:none"><i class="fa-solid fa-stamp"></i><span>Patentes</span><span class="nav-badge" id="badge-patentes" style="display:none" title="Prazos vencendo nos próximos 60 dias">0</span></button>
     <div class="nav-sec">Análise</div>
     <button class="nav-btn" id="nav-calendario" onclick="goPage('calendario',this)"><i class="fa-solid fa-calendar-days"></i><span>Calendário de Prazos</span></button>
     <button class="nav-btn" onclick="goPage('fases',this)"><i class="fa-solid fa-timeline"></i><span>Fases do Projeto</span></button>
@@ -1186,7 +1186,7 @@ tr:hover td{background:var(--sf2)}
 
         <div id="pat-alertas-wrap" style="margin-bottom:16px"></div>
 
-        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px;margin-bottom:16px">
+        <div id="pat-import-card" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px;margin-bottom:16px">
           <div class="sec-header" style="margin-bottom:8px">
             <span class="sec-title" style="font-size:13px"><i class="fa-solid fa-file-pdf"></i> Importar relatório de patentes (PDF)</span>
             <button class="btn btn-sm" id="pat-imp-toggle" onclick="patToggleImport()"><i class="fa-solid fa-chevron-down"></i> Abrir</button>
@@ -1210,6 +1210,7 @@ tr:hover td{background:var(--sf2)}
             </div>
           </div>
         </div>
+        <div id="pat-import-sem-ia" style="display:none;font-size:11px;color:var(--tx2);margin-bottom:16px"><i class="fa-solid fa-circle-info"></i> Você não tem acesso ao Agente de IA de importação por PDF. O cadastro manual de patentes continua disponível — use o botão "Nova Patente". Peça a liberação da IA a um superadmin, se precisar.</div>
 
         <div class="sec-header">
           <span class="sec-title">Patentes cadastradas</span>
@@ -3182,7 +3183,12 @@ function aplicar(d){
   // acesso à aba FINEP de alguém já logado.
   if(sess){
     const meuUsr=usr.find(u=>String(u.id)===String(sess.id));
-    if(meuUsr){ sess.finep_acesso = meuUsr.finep_acesso===true||meuUsr.finep_acesso==='true'; }
+    if(meuUsr){
+      sess.finep_acesso = meuUsr.finep_acesso===true||meuUsr.finep_acesso==='true';
+      // v32.0 — Seção 101: mesmo padrão acima, para aba Patentes e Agente de IA.
+      sess.patentes_acesso = meuUsr.patentes_acesso===true||meuUsr.patentes_acesso==='true';
+      sess.patentes_ia_acesso = meuUsr.patentes_ia_acesso===true||meuUsr.patentes_ia_acesso==='true';
+    }
   }
   if(cfg.empresa){['sid-empresa','ftr-empresa','setup-company'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=cfg.empresa;});document.title='Gestão — '+cfg.empresa;}
 }
@@ -3199,6 +3205,15 @@ async function sincronizar(){
       toast('Seu acesso à aba FINEP foi revogado.','err');
       goPage('projetos', document.querySelector('.nav-btn'));
     }
+    // v32.0 — Seção 101: mesmo padrão acima, para aba Patentes.
+    const navPat=document.getElementById('nav-patentes');
+    const podePat=sess?.perfil==='superadmin'||sess?.patentes_acesso===true;
+    if(navPat) navPat.style.display=podePat?'':'none';
+    if(!podePat && document.getElementById('page-patentes')?.classList.contains('active')){
+      toast('Seu acesso à aba Patentes foi revogado.','err');
+      goPage('projetos', document.querySelector('.nav-btn'));
+    }
+    patAtualizarVisibilidadeIA();
   }
 }
 
@@ -3234,6 +3249,9 @@ function entrarApp(){
   document.getElementById('nav-cfg').style.display=isAdm?'':'none';
   document.getElementById('nav-agentes').style.display=sess?.perfil==='superadmin'?'':'none';
   document.getElementById('nav-finep').style.display=(sess?.perfil==='superadmin'||sess?.finep_acesso===true||sess?.finep_acesso==='true')?'':'none';
+  // v32.0 — Seção 101: mesmo padrão acima, para aba Patentes.
+  document.getElementById('nav-patentes').style.display=(sess?.perfil==='superadmin'||sess?.patentes_acesso===true||sess?.patentes_acesso==='true')?'':'none';
+  patAtualizarVisibilidadeIA();
   popularFiltros();renderAll();renderNBadge();renderBadgeMeuDia();
   document.getElementById('sf-count').textContent=proj.length+'p · '+tar.length+'t';
   toast('Bem-vindo, '+sess.nome.split(' ')[0]+'! ✓');
@@ -3261,6 +3279,11 @@ function goPage(id,btn){
   // direto (ex.: console), sem depender só do botão do menu estar escondido.
   if(id==='finep' && !(sess?.perfil==='superadmin'||sess?.finep_acesso===true||sess?.finep_acesso==='true')){
     toast('Você não tem acesso à aba FINEP. Peça a liberação para um superadmin.','err');
+    return;
+  }
+  // v32.0 — Seção 101: mesma trava acima, para a aba Patentes.
+  if(id==='patentes' && !(sess?.perfil==='superadmin'||sess?.patentes_acesso===true||sess?.patentes_acesso==='true')){
+    toast('Você não tem acesso à aba Patentes. Peça a liberação para um superadmin.','err');
     return;
   }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -5200,6 +5223,8 @@ function renderUsuarios(){
     <span class="badge ${pc[u.perfil]||'bg-gray'}" style="font-size:10px">${u.perfil}</span>
     ${u.primeiroacesso==='true'||u.primeiroacesso===true?'<span class="badge bg-amber" style="font-size:10px">1º acesso</span>':''}
     ${u.perfil!=='superadmin'&&(u.finep_acesso===true||u.finep_acesso==='true')?'<span class="badge bg-purple" style="font-size:10px" title="Tem acesso à aba FINEP"><i class="fa-solid fa-landmark" style="font-size:8px"></i> FINEP</span>':''}
+    ${u.perfil!=='superadmin'&&(u.patentes_acesso===true||u.patentes_acesso==='true')?'<span class="badge bg-purple" style="font-size:10px" title="Tem acesso à aba Patentes"><i class="fa-solid fa-stamp" style="font-size:8px"></i> Patentes</span>':''}
+    ${u.perfil!=='superadmin'&&(u.patentes_ia_acesso===true||u.patentes_ia_acesso==='true')?'<span class="badge bg-purple" style="font-size:10px" title="Tem acesso ao Agente de IA de Patentes"><i class="fa-solid fa-wand-magic-sparkles" style="font-size:8px"></i> IA Patentes</span>':''}
     <button class="btn btn-sm btn-icon" onclick="openModalUsr('${u.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
     ${u.perfil!=='superadmin'?`<button class="btn btn-sm btn-icon btn-danger" onclick="confDel('usuario','${u.id}')"><i class="fa-solid fa-trash-can"></i></button>`:''}
   </div>`).join('');
@@ -6039,6 +6064,18 @@ function openModalUsr(id){
         <span class="tip"><span style="cursor:help">ⓘ</span><span class="tip-text">Só o superadmin pode liberar ou revogar. Sem isso marcado, a pessoa não vê a aba FINEP no menu nem consegue abri-la de outra forma. A mudança vale para sessões já abertas também, sem precisar deslogar.</span></span>
       </label>
     </div>`:''}
+    ${sess?.perfil==='superadmin'&&(!u||u.perfil!=='superadmin')?`<div class="form-group form-full" style="background:var(--acbg);padding:8px 10px;border-radius:var(--r);border:1px solid #b8d0f0;display:flex;flex-direction:column;gap:6px">
+      <label style="display:flex;align-items:center;gap:6px;color:var(--ac2);text-transform:none;font-size:12px">
+        <input type="checkbox" id="mu-patentes" style="width:auto" ${u&&(u.patentes_acesso===true||u.patentes_acesso==='true')?'checked':''}>
+        Acesso à aba Patentes
+        <span class="tip"><span style="cursor:help">ⓘ</span><span class="tip-text">Só o superadmin pode liberar ou revogar. Sem isso marcado, a pessoa não vê a aba Patentes no menu nem consegue abri-la de outra forma. Vale para sessões já abertas, sem precisar deslogar.</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;color:var(--ac2);text-transform:none;font-size:12px">
+        <input type="checkbox" id="mu-patentes-ia" style="width:auto" ${u&&(u.patentes_ia_acesso===true||u.patentes_ia_acesso==='true')?'checked':''}>
+        Acesso ao Agente de IA de Patentes (importar PDF)
+        <span class="tip"><span style="cursor:help">ⓘ</span><span class="tip-text">Independente do acesso à aba: dá pra liberar o cadastro manual de patentes sem liberar a importação por IA (controla quem pode gerar custo de IA). Só o superadmin pode liberar ou revogar.</span></span>
+      </label>
+    </div>`:''}
   </div>
   ${!u?'<div style="margin-top:9px;padding:8px 9px;background:var(--ambg);border:1px solid #f0c88a;border-radius:var(--r);font-size:12px;color:var(--am)"><i class="fa-solid fa-triangle-exclamation" style="margin-right:4px"></i>Senha vazia = <b>admin1234</b>. Usuário trocará no 1º acesso.</div>':''}
   </div>
@@ -6053,6 +6090,10 @@ async function salvarUsr(id){
   if(perfilEl)body.perfil=perfilEl.value;
   const finepEl=document.getElementById('mu-finep');
   if(finepEl) body.finepAcesso=finepEl.checked;
+  const patEl=document.getElementById('mu-patentes');
+  if(patEl) body.patentesAcesso=patEl.checked;
+  const patIaEl=document.getElementById('mu-patentes-ia');
+  if(patIaEl) body.patentesIaAcesso=patIaEl.checked;
   const r=id?await api('editarUsuario',{id,...body}):await api('criarUsuario',body);
   if(r.ok){closeModal();await sincronizar();renderUsuarios();toast(id?'Usuário atualizado!':'Usuário criado!');}
   else toast('Erro: '+(r.erro||'falha'),'err');
@@ -9432,7 +9473,7 @@ function ideiaCardHtml(i, compacto) {
     <div class="bs-card-acts">
       <button class="btn btn-sm btn-icon" title="Editar" onclick="openModalIdeia('${escapeAttr(i.id)}')"><i class="fa-solid fa-pen" style="font-size:10px"></i></button>
       <button class="btn btn-sm btn-icon" title="Converter em etapa ou tarefa" onclick="openModalConverterIdeia('${escapeAttr(i.id)}')"><i class="fa-solid fa-shuffle" style="font-size:10px"></i></button>
-      ${FEATURES.ideiaParaPatente?`<button class="btn btn-sm btn-icon" title="Marcar como candidata a patente" onclick="ideiaVirarPatente('${escapeAttr(i.id)}')"><i class="fa-solid fa-stamp" style="font-size:10px"></i></button>`:''}
+      ${FEATURES.ideiaParaPatente&&(sess?.perfil==='superadmin'||sess?.patentes_acesso===true||sess?.patentes_acesso==='true')?`<button class="btn btn-sm btn-icon" title="Marcar como candidata a patente" onclick="ideiaVirarPatente('${escapeAttr(i.id)}')"><i class="fa-solid fa-stamp" style="font-size:10px"></i></button>`:''}
       <button class="btn btn-sm btn-icon btn-danger" title="Arquivar" onclick="ideiaArquivar('${escapeAttr(i.id)}')"><i class="fa-solid fa-box-archive" style="font-size:10px"></i></button>
     </div>
   </div>`;
@@ -9469,7 +9510,7 @@ function ideiasViewLista(lista) {
       <td style="white-space:nowrap">
         <button class="btn btn-sm btn-icon" title="Editar" onclick="openModalIdeia('${escapeAttr(i.id)}')"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-sm btn-icon" title="Converter em etapa/tarefa" onclick="openModalConverterIdeia('${escapeAttr(i.id)}')"><i class="fa-solid fa-shuffle"></i></button>
-        ${FEATURES.ideiaParaPatente?`<button class="btn btn-sm btn-icon" title="Marcar como candidata a patente" onclick="ideiaVirarPatente('${escapeAttr(i.id)}')"><i class="fa-solid fa-stamp"></i></button>`:''}
+        ${FEATURES.ideiaParaPatente&&(sess?.perfil==='superadmin'||sess?.patentes_acesso===true||sess?.patentes_acesso==='true')?`<button class="btn btn-sm btn-icon" title="Marcar como candidata a patente" onclick="ideiaVirarPatente('${escapeAttr(i.id)}')"><i class="fa-solid fa-stamp"></i></button>`:''}
         <button class="btn btn-sm btn-icon btn-danger" title="Arquivar" onclick="ideiaArquivar('${escapeAttr(i.id)}')"><i class="fa-solid fa-box-archive"></i></button>
       </td></tr>`;
   }).join('') + '</tbody></table></div>';
@@ -14587,6 +14628,19 @@ async function salvarPatenteModal(id, ideiaId) {
   else toast('Erro: ' + (r.erro || 'falha'), 'err');
 }
 
+// v32.0 — Seção 101: mostra/esconde o card de importação por IA conforme
+// patentes_ia_acesso (independente de patentes_acesso — dá pra ter a aba
+// sem ter a IA). Chamada em sincronizar()/entrarApp(), sempre que a sessão
+// é (re)carregada — nunca só no primeiro load, pra reagir a uma liberação
+// feita pelo superadmin enquanto o usuário já está logado.
+function patAtualizarVisibilidadeIA() {
+  const card = document.getElementById('pat-import-card');
+  const aviso = document.getElementById('pat-import-sem-ia');
+  if (!card || !aviso) return;
+  const podeIA = sess?.perfil === 'superadmin' || sess?.patentes_ia_acesso === true || sess?.patentes_ia_acesso === 'true';
+  card.style.display = podeIA ? '' : 'none';
+  aviso.style.display = podeIA ? 'none' : '';
+}
 // ── Importação de PDF + Agente de Extração por IA ───────────────────────────
 function patToggleImport() {
   const body = document.getElementById('pat-imp-body');
@@ -14858,7 +14912,7 @@ function renderPainelInovacao(){
       <span>${escapeHtml(i.titulo||'Sem título')}</span>
       <span style="display:flex;gap:5px">
         <button class="btn btn-sm btn-icon" title="Converter em etapa/tarefa" onclick="openModalConverterIdeia('${escapeAttr(i.id)}')"><i class="fa-solid fa-shuffle"></i></button>
-        ${FEATURES.ideiaParaPatente?`<button class="btn btn-sm btn-icon" title="Marcar como candidata a patente" onclick="ideiaVirarPatente('${escapeAttr(i.id)}')"><i class="fa-solid fa-stamp"></i></button>`:''}
+        ${FEATURES.ideiaParaPatente&&(sess?.perfil==='superadmin'||sess?.patentes_acesso===true||sess?.patentes_acesso==='true')?`<button class="btn btn-sm btn-icon" title="Marcar como candidata a patente" onclick="ideiaVirarPatente('${escapeAttr(i.id)}')"><i class="fa-solid fa-stamp"></i></button>`:''}
       </span>
     </div>`).join('') : '<p style="font-size:12px;color:var(--tx3);padding:10px 0">Nenhuma ideia aprovada aguardando conversão.</p>';
   }
