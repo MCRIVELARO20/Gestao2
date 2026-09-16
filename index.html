@@ -1192,16 +1192,18 @@ tr:hover td{background:var(--sf2)}
             <button class="btn btn-sm" id="pat-imp-toggle" onclick="patToggleImport()"><i class="fa-solid fa-chevron-down"></i> Abrir</button>
           </div>
           <div id="pat-imp-body" style="display:none">
-            <div style="font-size:11px;color:var(--tx2);margin-bottom:10px"><i class="fa-solid fa-circle-info"></i> Anexe o relatório em PDF (ex.: relatório do escritório de patentes/advocacia). O texto é lido aqui mesmo no navegador — nada do arquivo é enviado além do texto — e a IA organiza os dados de cada patente para você revisar antes de salvar. <b>Nenhum relatório traz a descrição da invenção</b>: esse campo vem sempre em branco e precisa ser preenchido manualmente na revisão.</div>
+            <div style="font-size:11px;color:var(--tx2);margin-bottom:10px"><i class="fa-solid fa-circle-info"></i> Anexe um ou mais PDFs do MESMO processo ou de processos diferentes (petição do INPI, relatório do escritório, certificado...) — a IA cruza os dados entre eles. O texto é lido aqui mesmo no navegador — nada do arquivo é enviado além do texto. Se um processo já estiver cadastrado (mesmo número), a importação <b>atualiza</b> o existente em vez de duplicar; campos preenchidos por você (Título popular, Descrição, Projeto, Responsável, Observações) nunca são sobrescritos pela IA. <b>A "Descrição da invenção" nunca vem de documento nenhum</b>: é sempre preenchida manualmente na revisão.</div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-              <input type="file" id="pat-arquivo" accept="application/pdf" style="font-size:12px">
-              <button class="btn btn-primary btn-sm" id="pat-extrair-btn" onclick="patExtrairComIA()"><i class="fa-solid fa-wand-magic-sparkles"></i> Ler PDF e extrair com IA</button>
+              <input type="file" id="pat-arquivo" accept="application/pdf" multiple style="font-size:12px">
+              <button class="btn btn-primary btn-sm" id="pat-extrair-btn" onclick="patExtrairComIA()"><i class="fa-solid fa-wand-magic-sparkles"></i> Ler PDF(s) e extrair com IA</button>
               <span id="pat-imp-status" style="font-size:11px;color:var(--tx2)"></span>
             </div>
+            <div id="pat-import-inconsistencias" style="display:none;font-size:11px;color:var(--am);background:var(--ambg);border:1px solid #f0c88a;border-radius:var(--r);padding:8px 10px;margin-bottom:10px"></div>
+            <div id="pat-import-alerta" style="display:none;font-size:11px;color:var(--rd);background:var(--rdbg);border:1px solid #e8a8a8;border-radius:var(--r);padding:8px 10px;margin-bottom:10px"></div>
             <div id="pat-preview-wrap" style="display:none">
               <div class="sec-header" style="margin-bottom:6px"><span style="font-size:12px;font-weight:600">Revise antes de salvar — preencha a Descrição de cada patente</span></div>
               <div class="tbl-wrap"><table><thead><tr>
-                <th>Processo</th><th>Status</th><th>Próx. retribuição</th><th>Título</th><th>Descrição da invenção *</th><th></th>
+                <th>Ação</th><th>Processo</th><th>Situação / Status</th><th>Próx. retribuição</th><th>Titular</th><th>Título</th><th>Descrição da invenção *</th><th></th>
               </tr></thead><tbody id="pat-preview-tbody"></tbody></table></div>
               <div style="margin-top:10px;display:flex;gap:8px">
                 <button class="btn btn-primary btn-sm" onclick="patSalvarPendentes()"><i class="fa-solid fa-floppy-disk"></i> Salvar todas as patentes</button>
@@ -14364,7 +14366,8 @@ const PAT_PRAZO_CAMPOS = [
   ['proxima_retribuicao', 'Próxima retribuição'],
   ['lim1_prazo', 'Limite 1º prazo'],
   ['lim2_prazo', 'Limite 2º prazo'],
-  ['exame_ate', 'Prazo de exame']
+  ['exame_ate', 'Prazo de exame'],
+  ['prazo_alerta_data', 'Prazo em aberto (documento)'] // v33.0 — Seção 102: qualquer prazo que a IA achou em prosa (exigência, recurso, nulidade)
 ];
 
 // ── Domínio puro ──────────────────────────────────────────────────────────
@@ -14549,21 +14552,28 @@ function openModalPatente(id, prefill) {
     <div class="form-group"><label>Número do processo *</label><input id="mpat-num" value="${escapeAttr(p ? p.numero_processo || '' : '')}" placeholder="BR 202024009461"></div>
     <div class="form-group"><label>Pasta</label><input id="mpat-pasta" value="${escapeAttr(p ? p.pasta || '' : '')}"></div>
     <div class="form-group"><label>Referência</label><input id="mpat-ref" value="${escapeAttr(p ? p.referencia || '' : '')}"></div>
-    <div class="form-group"><label>Tipo</label><input id="mpat-tipo" value="${escapeAttr(p ? p.tipo || '' : '')}" placeholder="Patente de Invenção, Modelo de Utilidade..."></div>
+    <div class="form-group"><label>Tipo ${p && p.natureza_confirmada ? tipHtml('Natureza da proteção — ' + (p.natureza_confirmada === 'confirmado' ? 'confirmada pelo documento oficial.' : 'IA só conseguiu inferir pelo prefixo do número do processo — confira antes de confiar.')) : ''}</label><input id="mpat-tipo" value="${escapeAttr(p ? p.tipo || '' : '')}" placeholder="Patente de Invenção, Modelo de Utilidade..."></div>
+    <div class="form-group"><label>Situação</label><input id="mpat-situacao" value="${escapeAttr(p ? p.situacao || '' : '')}" placeholder="Pedido, Carta Patente, Registro..."></div>
     <div class="form-group"><label>Status</label><input id="mpat-status" list="mpat-status-list" value="${escapeAttr(p ? p.status || '' : '')}"><datalist id="mpat-status-list">${statusOpts}</datalist></div>
     <div class="form-group"><label>Legenda de status (texto completo do relatório)</label><input id="mpat-legenda" value="${escapeAttr(p ? p.status_legenda || '' : '')}"></div>
+    <div class="form-group form-full"><label>Titular ${tipHtml('Titular oficial do processo — diferente de "Envolvidos", que pode incluir procuradores/contatos do escritório.')}</label><input id="mpat-titular" value="${escapeAttr(p ? p.titular || '' : '')}"></div>
     <div class="form-group"><label>Próxima retribuição</label><input id="mpat-retrib" type="date" value="${escapeAttr(p ? normDate(p.proxima_retribuicao) : '')}"></div>
+    <div class="form-group"><label>Anuidade (nº/texto)</label><input id="mpat-retrib-label" value="${escapeAttr(p ? p.proxima_retribuicao_label || '' : '')}" placeholder="Ex: 3ª anuidade"></div>
     <div class="form-group"><label>Limite 1º prazo</label><input id="mpat-lim1" type="date" value="${escapeAttr(p ? normDate(p.lim1_prazo) : '')}"></div>
     <div class="form-group"><label>Limite 2º prazo</label><input id="mpat-lim2" type="date" value="${escapeAttr(p ? normDate(p.lim2_prazo) : '')}"></div>
     <div class="form-group"><label>Exame até</label><input id="mpat-exame" type="date" value="${escapeAttr(p ? normDate(p.exame_ate) : '')}"></div>
+    <div class="form-group"><label>Prazo em aberto (documento) ${tipHtml('Qualquer prazo com vencimento próximo que a IA achou em prosa no documento — exigência técnica, recurso, nulidade.')}</label><input id="mpat-prazo-alerta" type="date" value="${escapeAttr(p ? normDate(p.prazo_alerta_data) : '')}"></div>
     <div class="form-group form-full"><label>Envolvidos / titulares</label><input id="mpat-envolvidos" value="${escapeAttr(p ? p.envolvidos || '' : '')}"></div>
     <div class="form-group"><label>Data do último despacho</label><input id="mpat-desp-data" type="date" value="${escapeAttr(p ? normDate(p.ultimo_despacho_data) : '')}"></div>
     <div class="form-group"><label>Descrição do último despacho</label><input id="mpat-desp-desc" value="${escapeAttr(p ? p.ultimo_despacho_descricao || '' : '')}"></div>
+    <div class="form-group form-full"><label>Título oficial (54) ${tipHtml('Título da Invenção ou Modelo de Utilidade, copiado do documento oficial — diferente do "Título da patente" abaixo, que é só o apelido popular escolhido por você.')}</label><input id="mpat-titulo-oficial" value="${escapeAttr(p ? p.titulo_oficial || '' : '')}"></div>
+    <div class="form-group form-full"><label>Resumo oficial</label><textarea id="mpat-resumo" rows="3">${escapeHtml(p ? p.resumo || '' : '')}</textarea></div>
+    <div class="form-group form-full"><label>Observações do relatório (IA) ${tipHtml('Narrativa que a IA monta a partir dos documentos: inventores, data de depósito, classificação, último despacho, prazos em aberto. Reescrita a cada reimportação — para suas próprias anotações, use o campo "Observações" mais abaixo.')}</label><textarea id="mpat-obs-relatorio" rows="3">${escapeHtml(p ? p.obs_relatorio || '' : '')}</textarea></div>
     <div class="form-group form-full"><label>Título da patente ${tipHtml('Nome curto e popular para identificar a patente nas telas — não é o título formal do INPI, é só pra facilitar a busca.')}</label><input id="mpat-titulo" value="${escapeAttr(p ? p.titulo || '' : (prefill?.titulo || ''))}" placeholder="Ex: Sistema de transbordo hidráulico automatizado"></div>
     <div class="form-group form-full"><label>Descrição da invenção ${tipHtml('Nenhum relatório de status de patente traz esse texto — é sempre preenchido manualmente. Explique do que se trata a invenção e qual problema ela resolve.')}</label><textarea id="mpat-desc" rows="4" placeholder="Descreva a invenção — do que se trata, qual problema resolve...">${escapeHtml(p ? p.descricao || '' : (prefill?.descricao || ''))}</textarea></div>
     <div class="form-group"><label>Projeto vinculado (opcional)</label><select id="mpat-proj"><option value="">— Nenhum —</option>${projOpts}</select></div>
     <div class="form-group"><label>Responsável interno</label><select id="mpat-resp"><option value="">— Selecione —</option>${engOpts}</select></div>
-    <div class="form-group form-full"><label>Observações</label><textarea id="mpat-obs" rows="2">${escapeHtml(p ? p.obs || '' : '')}</textarea></div>
+    <div class="form-group form-full"><label>Observações ${tipHtml('Suas próprias anotações — nunca é sobrescrito por importação de PDF.')}</label><textarea id="mpat-obs" rows="2">${escapeHtml(p ? p.obs || '' : '')}</textarea></div>
   </div>${p && FEATURES.timelinePatente ? patTimelineHtml(p.id) : ''}</div>
   <div class="modal-footer">
     ${p ? `<button class="btn btn-danger" onclick="patenteArquivar('${escapeAttr(p.id)}');closeModal()"><i class="fa-solid fa-box-archive"></i> Arquivar</button>` : ''}
@@ -14592,15 +14602,22 @@ async function salvarPatenteModal(id, ideiaId) {
     pasta: (document.getElementById('mpat-pasta')?.value || '').trim(),
     referencia: (document.getElementById('mpat-ref')?.value || '').trim(),
     tipo: (document.getElementById('mpat-tipo')?.value || '').trim(),
+    situacao: (document.getElementById('mpat-situacao')?.value || '').trim(),
     status: (document.getElementById('mpat-status')?.value || '').trim(),
     status_legenda: (document.getElementById('mpat-legenda')?.value || '').trim(),
+    titular: (document.getElementById('mpat-titular')?.value || '').trim(),
     proxima_retribuicao: document.getElementById('mpat-retrib')?.value || '',
+    proxima_retribuicao_label: (document.getElementById('mpat-retrib-label')?.value || '').trim(),
     lim1_prazo: document.getElementById('mpat-lim1')?.value || '',
     lim2_prazo: document.getElementById('mpat-lim2')?.value || '',
     exame_ate: document.getElementById('mpat-exame')?.value || '',
+    prazo_alerta_data: document.getElementById('mpat-prazo-alerta')?.value || '',
     envolvidos: (document.getElementById('mpat-envolvidos')?.value || '').trim(),
     ultimo_despacho_data: document.getElementById('mpat-desp-data')?.value || '',
     ultimo_despacho_descricao: (document.getElementById('mpat-desp-desc')?.value || '').trim(),
+    titulo_oficial: (document.getElementById('mpat-titulo-oficial')?.value || '').trim(),
+    resumo: (document.getElementById('mpat-resumo')?.value || '').trim(),
+    obs_relatorio: (document.getElementById('mpat-obs-relatorio')?.value || '').trim(),
     titulo: (document.getElementById('mpat-titulo')?.value || '').trim(),
     descricao: (document.getElementById('mpat-desc')?.value || '').trim(),
     projetoId: document.getElementById('mpat-proj')?.value || '',
@@ -14652,45 +14669,95 @@ function patToggleImport() {
 }
 // Lê o PDF inteiro no navegador com pdf.js (nenhum binário sobe pro backend,
 // só o texto) e manda pro Agente de Extração (Gemini) estruturar cada patente.
+// v33.0 — Seção 102: campos que só a IA/relatório preenche — seguros de
+// sobrescrever numa reconciliação (update de patente já cadastrada). Nunca
+// inclui titulo/descricao/projetoId/responsavel/obs (esses são sempre do
+// usuário — ver comentário da Seção 90 e o campo "obs_relatorio" abaixo,
+// que é o equivalente da IA sem disputar a mesma coluna que o usuário edita).
+const PAT_CAMPOS_RELATORIO = [
+  'numero_processo', 'pasta', 'referencia', 'status', 'tipo', 'natureza_confirmada',
+  'situacao', 'titular', 'envolvidos', 'resumo', 'obs_relatorio', 'status_legenda',
+  'proxima_retribuicao', 'proxima_retribuicao_label', 'lim1_prazo', 'lim2_prazo', 'exame_ate',
+  'ultimo_despacho_data', 'ultimo_despacho_descricao', 'prazo_alerta_data', 'titulo_oficial', 'origem'
+];
 async function patExtrairComIA() {
   const inp = document.getElementById('pat-arquivo');
-  const f = inp && inp.files && inp.files[0];
-  if (!f) { toast('Selecione um arquivo PDF.', 'err'); return; }
+  const arquivosSelecionados = inp && inp.files ? Array.from(inp.files) : [];
+  if (!arquivosSelecionados.length) { toast('Selecione ao menos um arquivo PDF.', 'err'); return; }
   if (typeof pdfjsLib === 'undefined') { toast('Biblioteca de leitura de PDF não carregou. Verifique sua conexão e recarregue a página.', 'err'); return; }
   const statusEl = document.getElementById('pat-imp-status');
   const btn = document.getElementById('pat-extrair-btn');
   btn.disabled = true;
-  if (statusEl) statusEl.textContent = 'Lendo PDF...';
   try {
-    const buf = await f.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    let texto = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      texto += content.items.map(it => it.str).join(' ') + '\n';
+    const arquivos = [];
+    const semTexto = [];
+    for (const f of arquivosSelecionados) {
+      if (statusEl) statusEl.textContent = 'Lendo ' + f.name + '...';
+      const buf = await f.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      let texto = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        texto += content.items.map(it => it.str).join(' ') + '\n';
+      }
+      if (texto.trim()) arquivos.push({ nome: f.name, texto });
+      else semTexto.push(f.name);
     }
-    if (!texto.trim()) { toast('Não foi possível extrair texto deste PDF (pode ser um PDF de imagem/scan).', 'err'); if (statusEl) statusEl.textContent = ''; btn.disabled = false; return; }
-    if (statusEl) statusEl.textContent = 'Texto extraído (' + texto.length + ' caracteres). Consultando IA...';
-    const r = await api('agentePatenteExtrair', { texto });
+    if (semTexto.length) toast('Sem texto extraível (PDF de imagem/scan?): ' + semTexto.join(', '), 'warn');
+    if (!arquivos.length) { toast('Nenhum dos arquivos tinha texto extraível.', 'err'); if (statusEl) statusEl.textContent = ''; btn.disabled = false; return; }
+    if (statusEl) statusEl.textContent = arquivos.length + ' arquivo(s) lido(s). Consultando IA...';
+    const r = await api('agentePatenteExtrair', { arquivos });
     btn.disabled = false;
     if (!r.ok) { toast('Erro na extração: ' + (r.erro || 'falha'), 'err'); if (statusEl) statusEl.textContent = ''; return; }
     const lista = (r.dados && Array.isArray(r.dados.patentes)) ? r.dados.patentes : [];
-    if (!lista.length) { toast('A IA não encontrou nenhuma patente no texto deste PDF.', 'warn'); if (statusEl) statusEl.textContent = ''; return; }
-    patPendentes = lista.map(p => ({
-      numero_processo: p.numero_processo || '', pasta: p.pasta || '', referencia: p.referencia || '',
-      status: p.status || '', tipo: p.tipo || '',
-      proxima_retribuicao: normDate(p.proxima_retribuicao), lim1_prazo: normDate(p.lim1_prazo),
-      lim2_prazo: normDate(p.lim2_prazo), exame_ate: normDate(p.exame_ate),
-      envolvidos: p.envolvidos || '', ultimo_despacho_data: normDate(p.ultimo_despacho_data),
-      ultimo_despacho_descricao: p.ultimo_despacho_descricao || '', status_legenda: p.status_legenda || '',
-      titulo: '', descricao: '', projetoId: '', responsavel: '', obs: '', origem: 'pdf'
-    }));
-    if (statusEl) statusEl.textContent = lista.length + ' patente(s) encontrada(s). Revise abaixo — em especial a Descrição — antes de salvar.';
+    const inconsistencias = (r.dados && Array.isArray(r.dados.inconsistencias)) ? r.dados.inconsistencias : [];
+    if (!lista.length) { toast('A IA não encontrou nenhuma patente nos documentos.', 'warn'); if (statusEl) statusEl.textContent = ''; return; }
+    patPendentes = lista.map(p => {
+      // Reconciliação: casa pelo número do processo com o que já está
+      // cadastrado (não arquivado) — se achar, esta importação vira
+      // ATUALIZAÇÃO daquele registro em vez de duplicar (Seção 102).
+      const numero = (p.numero_processo || '').trim();
+      const existente = numero ? (pats || []).find(x => !(x.arquivado === true || x.arquivado === 'true') &&
+        String(x.numero_processo || '').trim() === numero) : null;
+      return {
+        numero_processo: numero, pasta: p.pasta || '', referencia: p.referencia || '',
+        status: p.status || '', tipo: p.tipo || '', natureza_confirmada: p.natureza_confirmada || '',
+        situacao: p.situacao || '', titular: p.titular || '',
+        proxima_retribuicao: normDate(p.proxima_retribuicao), proxima_retribuicao_label: p.proxima_retribuicao_label || '',
+        lim1_prazo: normDate(p.lim1_prazo), lim2_prazo: normDate(p.lim2_prazo), exame_ate: normDate(p.exame_ate),
+        envolvidos: p.envolvidos || '', ultimo_despacho_data: normDate(p.ultimo_despacho_data),
+        ultimo_despacho_descricao: p.ultimo_despacho_descricao || '', status_legenda: p.status_legenda || '',
+        titulo_oficial: p.titulo_oficial || '', resumo: p.resumo || '', obs_relatorio: p.obs_relatorio || '',
+        prazo_alerta_data: normDate(p.prazo_alerta_data),
+        titulo: existente ? '' : (p.titulo_oficial || '').slice(0, 80),
+        descricao: '', projetoId: '', responsavel: '', obs: '', origem: 'pdf',
+        _matchId: existente ? existente.id : '', _acao: existente ? 'atualizar' : 'nova'
+      };
+    });
+    const elInc = document.getElementById('pat-import-inconsistencias');
+    if (elInc) {
+      if (inconsistencias.length) {
+        elInc.style.display = '';
+        elInc.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <b>Inconsistências encontradas entre os documentos:</b><ul style="margin:4px 0 0 18px">' +
+          inconsistencias.map(t => '<li>' + escapeHtml(t) + '</li>').join('') + '</ul>';
+      } else { elInc.style.display = 'none'; elInc.innerHTML = ''; }
+    }
+    const elAlerta = document.getElementById('pat-import-alerta');
+    if (elAlerta) {
+      const urgentes = patPendentes.map(p => ({ p, prz: proximoPrazoPatente(p) })).filter(x => x.prz && x.prz.dias <= 60);
+      if (urgentes.length) {
+        elAlerta.style.display = '';
+        elAlerta.innerHTML = '<i class="fa-solid fa-bell"></i> <b>ALERTA — ' + urgentes.length + ' processo(s) com prazo em até 60 dias:</b><ul style="margin:4px 0 0 18px">' +
+          urgentes.map(x => '<li>' + escapeHtml(x.p.numero_processo || '(sem número)') + ' — ' + escapeHtml(x.prz.label) + ': ' + fD(x.prz.data) + (x.prz.dias < 0 ? ' (VENCIDO)' : ' (' + x.prz.dias + 'd)') + '</li>').join('') + '</ul>';
+      } else { elAlerta.style.display = 'none'; elAlerta.innerHTML = ''; }
+    }
+    const nAtualiza = patPendentes.filter(p => p._acao === 'atualizar').length;
+    if (statusEl) statusEl.textContent = lista.length + ' patente(s) encontrada(s) (' + nAtualiza + ' já cadastrada(s), vão atualizar). Revise abaixo — em especial a Descrição — antes de salvar.';
     patPreviewRender();
   } catch (e) {
     console.error('[PATENTES]', e);
-    toast('Falha ao processar o PDF: ' + e.message, 'err');
+    toast('Falha ao processar o(s) PDF(s): ' + e.message, 'err');
     if (statusEl) statusEl.textContent = '';
     btn.disabled = false;
   }
@@ -14702,9 +14769,11 @@ function patPreviewRender() {
   if (!patPendentes.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   tbody.innerHTML = patPendentes.map((p, idx) => `<tr>
+    <td>${p._acao === 'atualizar' ? '<span class="badge bg-purple" style="font-size:9px" title="Já existe uma patente com este número — vai atualizar, preservando Título/Descrição/Projeto/Responsável/Observações já preenchidos">Atualização</span>' : '<span class="badge bg-green" style="font-size:9px">Nova</span>'}</td>
     <td style="font-family:var(--mn);font-size:11px">${escapeHtml(p.numero_processo || '—')}</td>
-    <td>${escapeHtml(p.status || '—')}</td>
-    <td>${p.proxima_retribuicao ? fD(p.proxima_retribuicao) : '—'}</td>
+    <td>${escapeHtml(p.situacao || '—')}${p.status ? ' / ' + escapeHtml(p.status) : ''}</td>
+    <td>${p.proxima_retribuicao ? fD(p.proxima_retribuicao) : '—'}${p.proxima_retribuicao_label ? ' <span style="color:var(--tx2)">(' + escapeHtml(p.proxima_retribuicao_label) + ')</span>' : ''}</td>
+    <td style="font-size:11px">${escapeHtml(truncar(p.titular || '—', 30))}</td>
     <td><input value="${escapeAttr(p.titulo)}" placeholder="Nome popular da patente" oninput="patPreviewSetCampo(${idx},'titulo',this.value)" style="width:150px"></td>
     <td><textarea rows="2" placeholder="Descreva a invenção — não vem no relatório" oninput="patPreviewSetCampo(${idx},'descricao',this.value)" style="width:220px;${p.descricao ? '' : 'border-color:var(--am)'}">${escapeHtml(p.descricao)}</textarea></td>
     <td><button class="btn btn-sm btn-icon" title="Remover desta importação" onclick="patPendentes.splice(${idx},1);patPreviewRender()"><i class="fa-solid fa-xmark"></i></button></td>
@@ -14716,22 +14785,33 @@ function patCancelarPreview() {
   patPreviewRender();
   const statusEl = document.getElementById('pat-imp-status'); if (statusEl) statusEl.textContent = '';
   const inp = document.getElementById('pat-arquivo'); if (inp) inp.value = '';
+  const elInc = document.getElementById('pat-import-inconsistencias'); if (elInc) { elInc.style.display = 'none'; elInc.innerHTML = ''; }
+  const elAlerta = document.getElementById('pat-import-alerta'); if (elAlerta) { elAlerta.style.display = 'none'; elAlerta.innerHTML = ''; }
 }
 async function patSalvarPendentes() {
   if (!patPendentes.length) return;
   const semDesc = patPendentes.filter(p => !p.descricao || !p.descricao.trim()).length;
   if (semDesc && !confirm(semDesc + ' patente(s) sem descrição da invenção. Salvar mesmo assim? (dá pra completar depois, editando cada uma na lista)')) return;
-  let ok = 0, falhas = 0;
+  let ok = 0, falhas = 0, atualizadas = 0;
   for (const p of patPendentes) {
-    const r = await patenteSalvar('', p);
-    if (r.ok) { ok++; registrarHistorico('patente', r.id || '', p.titulo || p.numero_processo || '', 'criou (importação PDF)'); }
-    else falhas++;
+    if (p._matchId) {
+      // Atualização: manda só os campos de relatório — nunca toca em
+      // titulo/descricao/projetoId/responsavel/obs (editarRegistro só grava
+      // o que vier em params, então o resto do registro fica intacto).
+      const body = {};
+      PAT_CAMPOS_RELATORIO.forEach(c => { if (p[c] !== undefined) body[c] = p[c]; });
+      const r = await patenteSalvar(p._matchId, body);
+      if (r.ok) { ok++; atualizadas++; registrarHistorico('patente', p._matchId, p.numero_processo || '', 'atualizou (reimportação PDF)'); }
+      else falhas++;
+    } else {
+      const { _matchId, _acao, ...body } = p;
+      const r = await patenteSalvar('', body);
+      if (r.ok) { ok++; registrarHistorico('patente', r.id || '', p.titulo || p.numero_processo || '', 'criou (importação PDF)'); }
+      else falhas++;
+    }
   }
-  toast(ok + ' patente(s) salva(s)' + (falhas ? (', ' + falhas + ' com erro') : '') + '.', falhas ? 'warn' : 'ok');
-  patPendentes = [];
-  patPreviewRender();
-  const statusEl = document.getElementById('pat-imp-status'); if (statusEl) statusEl.textContent = '';
-  const inp = document.getElementById('pat-arquivo'); if (inp) inp.value = '';
+  toast(ok + ' patente(s) salva(s)' + (atualizadas ? (', ' + atualizadas + ' atualizada(s)') : '') + (falhas ? (', ' + falhas + ' com erro') : '') + '.', falhas ? 'warn' : 'ok');
+  patCancelarPreview();
   await patentesRecarregar();
 }
 
@@ -14799,7 +14879,13 @@ function patsImportarJSON(ev){
         numero_processo:n.numero_processo||'', pasta:n.pasta||'', referencia:n.referencia||'', status:n.status||'', tipo:n.tipo||'',
         proxima_retribuicao:normDate(n.proxima_retribuicao), lim1_prazo:normDate(n.lim1_prazo), lim2_prazo:normDate(n.lim2_prazo), exame_ate:normDate(n.exame_ate),
         envolvidos:n.envolvidos||'', ultimo_despacho_data:normDate(n.ultimo_despacho_data), ultimo_despacho_descricao:n.ultimo_despacho_descricao||'', status_legenda:n.status_legenda||'',
-        titulo:n.titulo||'', descricao:n.descricao||'', projetoId:n.projetoId||'', responsavel:n.responsavel||'', obs:n.obs||'', origem:'importado'
+        titulo:n.titulo||'', descricao:n.descricao||'', projetoId:n.projetoId||'', responsavel:n.responsavel||'', obs:n.obs||'', origem:'importado',
+        // v33.0 — Seção 102: mesmos campos novos do Agente de Extração, pra um
+        // backup exportado depois do upgrade não perder dado ao ser reimportado
+        // (patsExportarJSON já manda o objeto inteiro; aqui é só espelhar).
+        titulo_oficial:n.titulo_oficial||'', situacao:n.situacao||'', titular:n.titular||'',
+        natureza_confirmada:n.natureza_confirmada||'', resumo:n.resumo||'', obs_relatorio:n.obs_relatorio||'',
+        prazo_alerta_data:normDate(n.prazo_alerta_data), proxima_retribuicao_label:n.proxima_retribuicao_label||''
       };
       const r = await patenteSalvar('', body);
       if(r.ok) ok++; else falhas++;
