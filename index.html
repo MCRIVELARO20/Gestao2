@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <!-- v30.0 — Seção 90: leitura de PDF 100% no navegador (pdf.js) para o Agente de Extração de Patentes. Nenhum binário sobe pro Apps Script — só o texto já extraído. -->
+<!-- v34.0 — Seções 103-109: importação de planilha XLSX sem IA, texto expansível (Resumo/Observações), alerta de disputa/nulidade, painel de portfólio por titular/natureza, busca de anterioridade assistida, histórico de despachos e exportação configurável (patentes + colunas, PDF ou Excel). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{--bg:#f2f1ed;--sf:#fff;--sf2:#f0efe9;--bd:#e0dfd7;--bd2:#c8c7bf;--tx:#1a1a18;--tx2:#6b6b62;--tx3:#9b9b90;--ac:#1a3a5c;--ac2:#2563a8;--acbg:#e8f0fb;--gn:#2d6a3f;--gnbg:#e8f5ec;--am:#7a4a00;--ambg:#fef3e2;--rd:#8b1f1f;--rdbg:#fdecea;--pu:#3d2080;--pubg:#f0ecff;--pa:#b3185f;--pabg:#fbe4ee;--pm:#0f7a8c;--pmbg:#e0f3f5;--pb:#5a6b7a;--pbbg:#eaedf0;--r:6px;--rl:10px;--fn:'IBM Plex Sans',sans-serif;--mn:'IBM Plex Mono',monospace}
@@ -1184,26 +1185,36 @@ tr:hover td{background:var(--sf2)}
       <div id="page-patentes" class="page">
         <div class="metrics" id="pat-metrics"></div>
 
+        <div id="pat-disputas-wrap" style="margin-bottom:16px"></div>
         <div id="pat-alertas-wrap" style="margin-bottom:16px"></div>
+        <div id="pat-painel-portfolio" style="margin-bottom:16px"></div>
 
         <div id="pat-import-card" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px;margin-bottom:16px">
           <div class="sec-header" style="margin-bottom:8px">
-            <span class="sec-title" style="font-size:13px"><i class="fa-solid fa-file-pdf"></i> Importar relatório de patentes (PDF)</span>
+            <span class="sec-title" style="font-size:13px"><i class="fa-solid fa-file-import"></i> Importar patentes (PDF por IA ou planilha)</span>
             <button class="btn btn-sm" id="pat-imp-toggle" onclick="patToggleImport()"><i class="fa-solid fa-chevron-down"></i> Abrir</button>
           </div>
           <div id="pat-imp-body" style="display:none">
-            <div style="font-size:11px;color:var(--tx2);margin-bottom:10px"><i class="fa-solid fa-circle-info"></i> Anexe um ou mais PDFs do MESMO processo ou de processos diferentes (petição do INPI, relatório do escritório, certificado...) — a IA cruza os dados entre eles. O texto é lido aqui mesmo no navegador — nada do arquivo é enviado além do texto. Se um processo já estiver cadastrado (mesmo número), a importação <b>atualiza</b> o existente em vez de duplicar; campos preenchidos por você (Título popular, Descrição, Projeto, Responsável, Observações) nunca são sobrescritos pela IA. <b>A "Descrição da invenção" nunca vem de documento nenhum</b>: é sempre preenchida manualmente na revisão.</div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-              <input type="file" id="pat-arquivo" accept="application/pdf" multiple style="font-size:12px">
-              <button class="btn btn-primary btn-sm" id="pat-extrair-btn" onclick="patExtrairComIA()"><i class="fa-solid fa-wand-magic-sparkles"></i> Ler PDF(s) e extrair com IA</button>
-              <span id="pat-imp-status" style="font-size:11px;color:var(--tx2)"></span>
+            <div id="pat-import-ia-bloco">
+              <div style="font-size:11px;color:var(--tx2);margin-bottom:10px"><i class="fa-solid fa-circle-info"></i> Anexe um ou mais PDFs do MESMO processo ou de processos diferentes (petição do INPI, relatório do escritório, certificado...) — a IA cruza os dados entre eles. O texto é lido aqui mesmo no navegador — nada do arquivo é enviado além do texto. Se um processo já estiver cadastrado (mesmo número), a importação <b>atualiza</b> o existente em vez de duplicar; campos preenchidos por você (Título popular, Descrição, Projeto, Responsável, Observações) nunca são sobrescritos pela IA. <b>A "Descrição da invenção" nunca vem de documento nenhum</b>: é sempre preenchida manualmente na revisão.</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+                <input type="file" id="pat-arquivo" accept="application/pdf" multiple style="font-size:12px">
+                <button class="btn btn-primary btn-sm" id="pat-extrair-btn" onclick="patExtrairComIA()"><i class="fa-solid fa-wand-magic-sparkles"></i> Ler PDF(s) e extrair com IA</button>
+                <span id="pat-imp-status" style="font-size:11px;color:var(--tx2)"></span>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding-top:8px;border-top:1px dashed var(--bd)">
+              <input type="file" id="pat-arquivo-xlsx" accept=".xlsx,.xls" style="font-size:12px">
+              <button class="btn btn-sm" id="pat-extrair-xlsx-btn" onclick="patImportarXLSX()"><i class="fa-solid fa-file-excel"></i> Importar planilha (.xlsx, sem IA)</button>
+              <span id="pat-imp-xlsx-status" style="font-size:11px;color:var(--tx2)"></span>
+              <span class="tip"><span style="cursor:help">ⓘ</span><span class="tip-text">Colunas esperadas (em qualquer ordem, numa linha de cabeçalho): Processo, Título da Invenção ou Modelo de Utilidade (54), Próxima Retribuição, Situação, Status, Titular, Natureza Patente, Resumo, Observações. Leitura direta, sem IA — mais rápida e sem custo, disponível pra qualquer usuário com acesso à aba.</span></span>
             </div>
             <div id="pat-import-inconsistencias" style="display:none;font-size:11px;color:var(--am);background:var(--ambg);border:1px solid #f0c88a;border-radius:var(--r);padding:8px 10px;margin-bottom:10px"></div>
             <div id="pat-import-alerta" style="display:none;font-size:11px;color:var(--rd);background:var(--rdbg);border:1px solid #e8a8a8;border-radius:var(--r);padding:8px 10px;margin-bottom:10px"></div>
             <div id="pat-preview-wrap" style="display:none">
               <div class="sec-header" style="margin-bottom:6px"><span style="font-size:12px;font-weight:600">Revise antes de salvar — preencha a Descrição de cada patente</span></div>
               <div class="tbl-wrap"><table><thead><tr>
-                <th>Ação</th><th>Processo</th><th>Situação / Status</th><th>Próx. retribuição</th><th>Titular</th><th>Título</th><th>Descrição da invenção *</th><th></th>
+                <th>Ação</th><th>Processo</th><th>Situação / Status</th><th>Próx. retribuição</th><th>Titular</th><th>Resumo</th><th>Observações</th><th>Título</th><th>Descrição da invenção *</th><th></th>
               </tr></thead><tbody id="pat-preview-tbody"></tbody></table></div>
               <div style="margin-top:10px;display:flex;gap:8px">
                 <button class="btn btn-primary btn-sm" onclick="patSalvarPendentes()"><i class="fa-solid fa-floppy-disk"></i> Salvar todas as patentes</button>
@@ -1212,7 +1223,7 @@ tr:hover td{background:var(--sf2)}
             </div>
           </div>
         </div>
-        <div id="pat-import-sem-ia" style="display:none;font-size:11px;color:var(--tx2);margin-bottom:16px"><i class="fa-solid fa-circle-info"></i> Você não tem acesso ao Agente de IA de importação por PDF. O cadastro manual de patentes continua disponível — use o botão "Nova Patente". Peça a liberação da IA a um superadmin, se precisar.</div>
+        <div id="pat-import-sem-ia" style="display:none;font-size:11px;color:var(--tx2);margin-bottom:16px"><i class="fa-solid fa-circle-info"></i> Você não tem acesso ao Agente de IA de importação por PDF. O cadastro manual e a importação por planilha (.xlsx) continuam disponíveis — use o botão "Nova Patente" ou "Importar planilha" acima. Peça a liberação da IA a um superadmin, se precisar.</div>
 
         <div class="sec-header">
           <span class="sec-title">Patentes cadastradas</span>
@@ -1221,7 +1232,7 @@ tr:hover td{background:var(--sf2)}
             <select class="fsel" id="fpat-status" onchange="renderPatentes()"><option value="">Todos os status</option></select>
             <select class="fsel" id="fpat-proj" onchange="renderPatentes()"><option value="">Todos os projetos</option></select>
             <select class="fsel" id="fpat-desc" onchange="renderPatentes()"><option value="">Descrição — todas</option><option value="falta">Só sem descrição</option></select>
-            <button class="btn btn-sm" onclick="patExportarPDF()"><i class="fa-solid fa-file-export"></i> Exportar PDF</button>
+            <button class="btn btn-sm" onclick="abrirModalExportarPatentes()"><i class="fa-solid fa-file-export"></i> Exportar...</button>
             <button class="btn btn-sm" data-feat="backupPatentes" onclick="patsExportarJSON()" title="Baixa um JSON com todas as patentes (backup)"><i class="fa-solid fa-file-arrow-down"></i> Exportar JSON</button>
             <label class="btn btn-sm" data-feat="backupPatentes" style="cursor:pointer;margin:0" title="Adiciona patentes de um arquivo JSON exportado antes"><i class="fa-solid fa-file-arrow-up"></i> Importar JSON<input type="file" id="pat-import-file" accept="application/json,.json" style="display:none" onchange="patsImportarJSON(event)"></label>
           </div>
@@ -14386,6 +14397,44 @@ function proximoPrazoPatente(p) {
   });
   return melhor;
 }
+// v34.0 — Seção 105: palavras-chave de disputa administrativa — determinístico
+// de propósito (não é tarefa de IA: é busca de termo, mais barato e auditável).
+// Devolve o TRECHO onde achou (pra mostrar evidência), ou null se não achou nada.
+const PAT_PALAVRAS_DISPUTA = ['nulidade', 'contestação', 'contestacao', 'oposição', 'oposicao', 'impugnação', 'impugnacao', 'litígio', 'litigio', 'recurso administrativo'];
+function patDetectarDisputa(p) {
+  const original = [p.situacao, p.status, p.status_legenda, p.obs_relatorio, p.obs].filter(Boolean).join(' | ');
+  if (!original) return null;
+  const normalizado = normalizarTexto(original);
+  for (const palavra of PAT_PALAVRAS_DISPUTA) {
+    if (normalizado.indexOf(palavra) < 0) continue;
+    // achou por comparação sem acento — busca a mesma palavra no texto
+    // ORIGINAL (com acento, caixa preservada) só pra recortar um trecho
+    // legível como evidência; se não achar a forma exata, mostra o início
+    // do texto mesmo assim (nunca quebra, só fica um pouco menos preciso).
+    const idxOriginal = original.toLowerCase().indexOf(palavra);
+    const inicio = idxOriginal >= 0 ? Math.max(0, idxOriginal - 20) : 0;
+    return truncar(original.slice(inicio), 90);
+  }
+  return null;
+}
+// v34.0 — Seção 108: histórico de despachos — cada vez que o despacho muda
+// (reimportação OU edição manual), acrescenta uma entrada ao log em vez de
+// só sobrescrever ultimo_despacho_data/descricao (que sempre guarda só o
+// mais recente, e é reescrito a cada reimportação — ver L-local-09 na
+// memória: por isso o log é campo PRÓPRIO, nunca reaproveita coluna editável
+// pelo usuário). Mesmo padrão de 'colaboradores' (Tarefas): JSON em texto.
+function patAcrescentarDespacho(despachosLogAtual, novaData, novaDescricao, origem) {
+  if (!novaData && !novaDescricao) return despachosLogAtual || '';
+  let log = [];
+  try { log = JSON.parse(despachosLogAtual || '[]'); if (!Array.isArray(log)) log = []; } catch (e) { log = []; }
+  const ultimo = log[log.length - 1];
+  const mudou = !ultimo || ultimo.data !== (novaData || '') || ultimo.descricao !== (novaDescricao || '');
+  if (mudou) log.push({ data: novaData || '', descricao: novaDescricao || '', origem: origem || '', registrado_em: new Date().toISOString() });
+  return JSON.stringify(log);
+}
+function patDespachosLog(p) {
+  try { const log = JSON.parse(p && p.despachos_log || '[]'); return Array.isArray(log) ? log : []; } catch (e) { return []; }
+}
 function filtrarPatentes(lista, f) {
   f = f || {};
   const termo = normalizarTexto(f.busca || '');
@@ -14487,11 +14536,27 @@ function renderPatentes() {
 
   const semDesc = ativos.filter(p => !p.descricao || !p.descricao.trim()).length;
   const urgentes = ativos.map(p => ({ p, prz: proximoPrazoPatente(p) })).filter(x => x.prz && x.prz.dias <= 60);
+  const disputas = ativos.map(p => ({ p, achado: patDetectarDisputa(p) })).filter(x => x.achado);
 
   document.getElementById('pat-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">Patentes ativas</div><div class="metric-value">${ativos.length}</div><div class="metric-sub">${lista.length} exibida(s) com os filtros</div></div>
     <div class="metric"><div class="metric-label">Prazos em até 60 dias</div><div class="metric-value" style="color:${urgentes.length ? 'var(--rd)' : 'inherit'}">${urgentes.length}</div><div class="metric-sub">retribuição, limites ou exame</div></div>
-    <div class="metric"><div class="metric-label">Sem descrição da invenção</div><div class="metric-value" style="color:${semDesc ? 'var(--am)' : 'inherit'}">${semDesc}</div><div class="metric-sub">não vem no relatório — preencher manualmente</div></div>`;
+    <div class="metric"><div class="metric-label">Sem descrição da invenção</div><div class="metric-value" style="color:${semDesc ? 'var(--am)' : 'inherit'}">${semDesc}</div><div class="metric-sub">não vem no relatório — preencher manualmente</div></div>
+    <div class="metric"><div class="metric-label">Em disputa/contestação</div><div class="metric-value" style="color:${disputas.length ? 'var(--rd)' : 'inherit'}">${disputas.length}</div><div class="metric-sub">nulidade, oposição ou recurso detectado</div></div>`;
+
+  // v34.0 — Seção 105: alerta de processo em disputa é DIFERENTE do alerta de
+  // prazo por data — aqui não tem data pra contar, é palavra-chave em
+  // situacao/status/status_legenda/observações. Detecção determinística
+  // (nunca IA — mais barato e auditável), só sinaliza pra revisão humana.
+  const disputasWrap = document.getElementById('pat-disputas-wrap');
+  if (disputasWrap) {
+    disputasWrap.innerHTML = disputas.length ? `<div style="background:var(--rdbg);border:1px solid #e8a8a8;border-radius:var(--rl);padding:12px 14px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--rd)"><i class="fa-solid fa-gavel"></i> Processos em disputa ou contestação</div>
+      ${disputas.map(x => `<div style="padding:5px 0;border-bottom:1px solid #e8a8a8;font-size:12px">
+        <b>${escapeHtml(x.p.titulo || x.p.numero_processo || '—')}</b> <span style="color:var(--tx2)">(${escapeHtml(x.p.numero_processo || '—')})</span> — achado: "${escapeHtml(x.achado)}"
+      </div>`).join('')}
+    </div>` : '';
+  }
 
   const alertWrap = document.getElementById('pat-alertas-wrap');
   if (alertWrap) {
@@ -14506,6 +14571,37 @@ function renderPatentes() {
       </div>`;
     } else {
       alertWrap.innerHTML = '';
+    }
+  }
+
+  // v34.0 — Seção 106: painel de portfólio por titular e por natureza —
+  // ajuda a enxergar rápido concentração (ex.: patentes em nome de pessoa
+  // física vs. da empresa) sem abrir cada patente uma por uma.
+  const painelWrap = document.getElementById('pat-painel-portfolio');
+  if (painelWrap) {
+    if (!ativos.length) { painelWrap.innerHTML = ''; }
+    else {
+      const porTitular = {}, porNatureza = {};
+      ativos.forEach(p => {
+        const t = p.titular?.trim() || 'Não informado';
+        const n = p.tipo?.trim() || 'Não informado';
+        porTitular[t] = (porTitular[t] || 0) + 1;
+        porNatureza[n] = (porNatureza[n] || 0) + 1;
+      });
+      const linhaBarras = (mapa) => Object.entries(mapa).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+        `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px">
+          <span title="${escapeAttr(k)}">${escapeHtml(truncar(k, 40))}</span><span class="badge bg-gray" style="font-size:9px">${v}</span>
+        </div>`).join('');
+      painelWrap.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:12px 14px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px"><i class="fa-solid fa-user-tie"></i> Por titular</div>
+          ${linhaBarras(porTitular)}
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:12px 14px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px"><i class="fa-solid fa-stamp"></i> Por natureza</div>
+          ${linhaBarras(porNatureza)}
+        </div>
+      </div>`;
     }
   }
 
@@ -14566,8 +14662,21 @@ function openModalPatente(id, prefill) {
     <div class="form-group form-full"><label>Envolvidos / titulares</label><input id="mpat-envolvidos" value="${escapeAttr(p ? p.envolvidos || '' : '')}"></div>
     <div class="form-group"><label>Data do último despacho</label><input id="mpat-desp-data" type="date" value="${escapeAttr(p ? normDate(p.ultimo_despacho_data) : '')}"></div>
     <div class="form-group"><label>Descrição do último despacho</label><input id="mpat-desp-desc" value="${escapeAttr(p ? p.ultimo_despacho_descricao || '' : '')}"></div>
+    ${p && patDespachosLog(p).length ? `<div class="form-group form-full">
+      <details><summary style="cursor:pointer;font-size:12px;color:var(--ac2)">Histórico de despachos (${patDespachosLog(p).length}) ▾</summary>
+        <div style="margin-top:6px;max-height:180px;overflow-y:auto">
+          ${patDespachosLog(p).slice().reverse().map(d => `<div style="padding:5px 0;border-bottom:1px solid var(--bd);font-size:11px">
+            <b>${d.data ? fD(d.data) : '(sem data)'}</b> <span style="color:var(--tx2)">— ${escapeHtml(d.origem || '')}</span><br>${escapeHtml(d.descricao || '')}
+          </div>`).join('')}
+        </div>
+      </details>
+    </div>` : ''}
     <div class="form-group form-full"><label>Título oficial (54) ${tipHtml('Título da Invenção ou Modelo de Utilidade, copiado do documento oficial — diferente do "Título da patente" abaixo, que é só o apelido popular escolhido por você.')}</label><input id="mpat-titulo-oficial" value="${escapeAttr(p ? p.titulo_oficial || '' : '')}"></div>
     <div class="form-group form-full"><label>Resumo oficial</label><textarea id="mpat-resumo" rows="3">${escapeHtml(p ? p.resumo || '' : '')}</textarea></div>
+    <div class="form-group form-full" style="margin-top:-6px">
+      <button class="btn btn-sm" type="button" onclick="patAbrirBuscaAnterioridade()"><i class="fa-solid fa-magnifying-glass-chart"></i> Busca de anterioridade (Google Patents + Espacenet)</button>
+      <span class="tip"><span style="cursor:help">ⓘ</span><span class="tip-text">Monta os termos de busca a partir do Título oficial e do Resumo acima e abre as duas bases em novas abas — não substitui a busca formal do escritório de advocacia, é só um ponto de partida.</span></span>
+    </div>
     <div class="form-group form-full"><label>Observações do relatório (IA) ${tipHtml('Narrativa que a IA monta a partir dos documentos: inventores, data de depósito, classificação, último despacho, prazos em aberto. Reescrita a cada reimportação — para suas próprias anotações, use o campo "Observações" mais abaixo.')}</label><textarea id="mpat-obs-relatorio" rows="3">${escapeHtml(p ? p.obs_relatorio || '' : '')}</textarea></div>
     <div class="form-group form-full"><label>Título da patente ${tipHtml('Nome curto e popular para identificar a patente nas telas — não é o título formal do INPI, é só pra facilitar a busca.')}</label><input id="mpat-titulo" value="${escapeAttr(p ? p.titulo || '' : (prefill?.titulo || ''))}" placeholder="Ex: Sistema de transbordo hidráulico automatizado"></div>
     <div class="form-group form-full"><label>Descrição da invenção ${tipHtml('Nenhum relatório de status de patente traz esse texto — é sempre preenchido manualmente. Explique do que se trata a invenção e qual problema ela resolve.')}</label><textarea id="mpat-desc" rows="4" placeholder="Descreva a invenção — do que se trata, qual problema resolve...">${escapeHtml(p ? p.descricao || '' : (prefill?.descricao || ''))}</textarea></div>
@@ -14580,6 +14689,24 @@ function openModalPatente(id, prefill) {
     <button class="btn" onclick="closeModal()">Cancelar</button>
     <button class="btn btn-primary" onclick="salvarPatenteModal('${escapeAttr(id || '')}','${escapeAttr(prefill?.ideiaId || '')}')">${p ? 'Salvar' : 'Criar patente'}</button>
   </div></div></div>`;
+}
+// v34.0 — Seção 107: busca de anterioridade assistida — monta a query a
+// partir do que está no modal (não precisa a patente já estar salva) e abre
+// Google Patents + Espacenet em novas abas. Nunca raspa nada, só monta a URL
+// de busca com os termos — a decisão de anterioridade continua sendo do
+// escritório de advocacia/procurador habilitado.
+function patAbrirBuscaAnterioridade() {
+  const titulo = (document.getElementById('mpat-titulo-oficial')?.value || document.getElementById('mpat-titulo')?.value || '').trim();
+  const resumo = (document.getElementById('mpat-resumo')?.value || '').trim();
+  if (!titulo && !resumo) { toast('Preencha o Título oficial ou o Resumo antes de buscar.', 'err'); return; }
+  // Google Patents entende frase livre; Espacenet funciona melhor com poucos
+  // termos-chave — por isso a query do Espacenet usa só as primeiras
+  // palavras "significativas" (>3 letras) do título, não o resumo inteiro.
+  const query = (titulo + ' ' + resumo).trim().slice(0, 300);
+  const termosChave = titulo.split(/\s+/).filter(w => w.length > 3).slice(0, 6).join(' ');
+  window.open('https://patents.google.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
+  window.open('https://worldwide.espacenet.com/patent/search?q=' + encodeURIComponent(termosChave || titulo), '_blank', 'noopener');
+  toast('Busca aberta em 2 novas abas — Google Patents e Espacenet.');
 }
 async function salvarPatenteModal(id, ideiaId) {
   const numero = (document.getElementById('mpat-num')?.value || '').trim();
@@ -14625,6 +14752,9 @@ async function salvarPatenteModal(id, ideiaId) {
     obs: obsVal
   };
   if (!id) body.origem = 'manual';
+  // v34.0 — Seção 108: edição manual do despacho também entra no histórico —
+  // não só a reimportação por PDF/planilha.
+  body.despachos_log = patAcrescentarDespacho(anterior?.despachos_log, body.ultimo_despacho_data, body.ultimo_despacho_descricao, id ? 'manual-edicao' : 'manual-criacao');
   const r = await patenteSalvar(id || '', body);
   if (r.ok) {
     // v31.0 — Seção 99: quando o status muda, a linha do tempo (historico) grava a
@@ -14651,11 +14781,14 @@ async function salvarPatenteModal(id, ideiaId) {
 // é (re)carregada — nunca só no primeiro load, pra reagir a uma liberação
 // feita pelo superadmin enquanto o usuário já está logado.
 function patAtualizarVisibilidadeIA() {
-  const card = document.getElementById('pat-import-card');
+  // v34.0 — Seção 103: só o bloco de PDF+IA é escondido sem patentes_ia_acesso;
+  // a importação por planilha (XLSX, sem IA) fica sempre disponível pra quem
+  // já tem acesso à aba (esse acesso é checado 1 nível acima, na própria aba).
+  const bloco = document.getElementById('pat-import-ia-bloco');
   const aviso = document.getElementById('pat-import-sem-ia');
-  if (!card || !aviso) return;
+  if (!bloco || !aviso) return;
   const podeIA = sess?.perfil === 'superadmin' || sess?.patentes_ia_acesso === true || sess?.patentes_ia_acesso === 'true';
-  card.style.display = podeIA ? '' : 'none';
+  bloco.style.display = podeIA ? '' : 'none';
   aviso.style.display = podeIA ? 'none' : '';
 }
 // ── Importação de PDF + Agente de Extração por IA ───────────────────────────
@@ -14680,6 +14813,60 @@ const PAT_CAMPOS_RELATORIO = [
   'proxima_retribuicao', 'proxima_retribuicao_label', 'lim1_prazo', 'lim2_prazo', 'exame_ate',
   'ultimo_despacho_data', 'ultimo_despacho_descricao', 'prazo_alerta_data', 'titulo_oficial', 'origem'
 ];
+// v34.0 — Seção 103: monta um item de patPendentes a partir de um objeto bruto
+// (vindo da IA ou da planilha, mesmo formato de campos) e já resolve a
+// reconciliação (casa por numero_processo com o que já está cadastrado).
+// Compartilhado pelos dois caminhos de importação — nunca duplicar esta lógica.
+function patMontarPendente(p, origem) {
+  const numero = (p.numero_processo || '').trim();
+  const existente = numero ? (pats || []).find(x => !(x.arquivado === true || x.arquivado === 'true') &&
+    String(x.numero_processo || '').trim() === numero) : null;
+  return {
+    numero_processo: numero, pasta: p.pasta || '', referencia: p.referencia || '',
+    status: p.status || '', tipo: p.tipo || '', natureza_confirmada: p.natureza_confirmada || '',
+    situacao: p.situacao || '', titular: p.titular || '',
+    proxima_retribuicao: normDate(p.proxima_retribuicao), proxima_retribuicao_label: p.proxima_retribuicao_label || '',
+    lim1_prazo: normDate(p.lim1_prazo), lim2_prazo: normDate(p.lim2_prazo), exame_ate: normDate(p.exame_ate),
+    envolvidos: p.envolvidos || '', ultimo_despacho_data: normDate(p.ultimo_despacho_data),
+    ultimo_despacho_descricao: p.ultimo_despacho_descricao || '', status_legenda: p.status_legenda || '',
+    titulo_oficial: p.titulo_oficial || '', resumo: p.resumo || '', obs_relatorio: p.obs_relatorio || '',
+    prazo_alerta_data: normDate(p.prazo_alerta_data),
+    titulo: existente ? '' : (p.titulo_oficial || '').slice(0, 80),
+    descricao: '', projetoId: '', responsavel: '', obs: '', origem,
+    _matchId: existente ? existente.id : '', _acao: existente ? 'atualizar' : 'nova'
+  };
+}
+// Mescla novos itens em patPendentes (não substitui) — permite importar PDF
+// e depois planilha (ou vice-versa) na mesma revisão, sem perder o que já
+// tinha sido lido. Dois itens do MESMO processo na mesma leva: o mais novo
+// (último lido) prevalece na lista de revisão.
+function patMesclarPendentes(novos) {
+  novos.forEach(n => {
+    const idx = n.numero_processo ? patPendentes.findIndex(p => p.numero_processo === n.numero_processo) : -1;
+    if (idx >= 0) patPendentes[idx] = n; else patPendentes.push(n);
+  });
+}
+// Recalcula os banners de inconsistência e de ALERTA de prazo em cima do que
+// está em patPendentes agora — chamado depois de qualquer importação.
+function patAtualizarBannersImportacao(inconsistenciasNovas) {
+  const elInc = document.getElementById('pat-import-inconsistencias');
+  if (elInc) {
+    if (inconsistenciasNovas && inconsistenciasNovas.length) {
+      elInc.style.display = '';
+      elInc.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <b>Inconsistências encontradas entre os documentos:</b><ul style="margin:4px 0 0 18px">' +
+        inconsistenciasNovas.map(t => '<li>' + escapeHtml(t) + '</li>').join('') + '</ul>';
+    } else if (!elInc.innerHTML) { elInc.style.display = 'none'; }
+  }
+  const elAlerta = document.getElementById('pat-import-alerta');
+  if (elAlerta) {
+    const urgentes = patPendentes.map(p => ({ p, prz: proximoPrazoPatente(p) })).filter(x => x.prz && x.prz.dias <= 60);
+    if (urgentes.length) {
+      elAlerta.style.display = '';
+      elAlerta.innerHTML = '<i class="fa-solid fa-bell"></i> <b>ALERTA — ' + urgentes.length + ' processo(s) com prazo em até 60 dias:</b><ul style="margin:4px 0 0 18px">' +
+        urgentes.map(x => '<li>' + escapeHtml(x.p.numero_processo || '(sem número)') + ' — ' + escapeHtml(x.prz.label) + ': ' + fD(x.prz.data) + (x.prz.dias < 0 ? ' (VENCIDO)' : ' (' + x.prz.dias + 'd)') + '</li>').join('') + '</ul>';
+    } else { elAlerta.style.display = 'none'; elAlerta.innerHTML = ''; }
+  }
+}
 async function patExtrairComIA() {
   const inp = document.getElementById('pat-arquivo');
   const arquivosSelecionados = inp && inp.files ? Array.from(inp.files) : [];
@@ -14713,45 +14900,8 @@ async function patExtrairComIA() {
     const lista = (r.dados && Array.isArray(r.dados.patentes)) ? r.dados.patentes : [];
     const inconsistencias = (r.dados && Array.isArray(r.dados.inconsistencias)) ? r.dados.inconsistencias : [];
     if (!lista.length) { toast('A IA não encontrou nenhuma patente nos documentos.', 'warn'); if (statusEl) statusEl.textContent = ''; return; }
-    patPendentes = lista.map(p => {
-      // Reconciliação: casa pelo número do processo com o que já está
-      // cadastrado (não arquivado) — se achar, esta importação vira
-      // ATUALIZAÇÃO daquele registro em vez de duplicar (Seção 102).
-      const numero = (p.numero_processo || '').trim();
-      const existente = numero ? (pats || []).find(x => !(x.arquivado === true || x.arquivado === 'true') &&
-        String(x.numero_processo || '').trim() === numero) : null;
-      return {
-        numero_processo: numero, pasta: p.pasta || '', referencia: p.referencia || '',
-        status: p.status || '', tipo: p.tipo || '', natureza_confirmada: p.natureza_confirmada || '',
-        situacao: p.situacao || '', titular: p.titular || '',
-        proxima_retribuicao: normDate(p.proxima_retribuicao), proxima_retribuicao_label: p.proxima_retribuicao_label || '',
-        lim1_prazo: normDate(p.lim1_prazo), lim2_prazo: normDate(p.lim2_prazo), exame_ate: normDate(p.exame_ate),
-        envolvidos: p.envolvidos || '', ultimo_despacho_data: normDate(p.ultimo_despacho_data),
-        ultimo_despacho_descricao: p.ultimo_despacho_descricao || '', status_legenda: p.status_legenda || '',
-        titulo_oficial: p.titulo_oficial || '', resumo: p.resumo || '', obs_relatorio: p.obs_relatorio || '',
-        prazo_alerta_data: normDate(p.prazo_alerta_data),
-        titulo: existente ? '' : (p.titulo_oficial || '').slice(0, 80),
-        descricao: '', projetoId: '', responsavel: '', obs: '', origem: 'pdf',
-        _matchId: existente ? existente.id : '', _acao: existente ? 'atualizar' : 'nova'
-      };
-    });
-    const elInc = document.getElementById('pat-import-inconsistencias');
-    if (elInc) {
-      if (inconsistencias.length) {
-        elInc.style.display = '';
-        elInc.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <b>Inconsistências encontradas entre os documentos:</b><ul style="margin:4px 0 0 18px">' +
-          inconsistencias.map(t => '<li>' + escapeHtml(t) + '</li>').join('') + '</ul>';
-      } else { elInc.style.display = 'none'; elInc.innerHTML = ''; }
-    }
-    const elAlerta = document.getElementById('pat-import-alerta');
-    if (elAlerta) {
-      const urgentes = patPendentes.map(p => ({ p, prz: proximoPrazoPatente(p) })).filter(x => x.prz && x.prz.dias <= 60);
-      if (urgentes.length) {
-        elAlerta.style.display = '';
-        elAlerta.innerHTML = '<i class="fa-solid fa-bell"></i> <b>ALERTA — ' + urgentes.length + ' processo(s) com prazo em até 60 dias:</b><ul style="margin:4px 0 0 18px">' +
-          urgentes.map(x => '<li>' + escapeHtml(x.p.numero_processo || '(sem número)') + ' — ' + escapeHtml(x.prz.label) + ': ' + fD(x.prz.data) + (x.prz.dias < 0 ? ' (VENCIDO)' : ' (' + x.prz.dias + 'd)') + '</li>').join('') + '</ul>';
-      } else { elAlerta.style.display = 'none'; elAlerta.innerHTML = ''; }
-    }
+    patMesclarPendentes(lista.map(p => patMontarPendente(p, 'pdf')));
+    patAtualizarBannersImportacao(inconsistencias);
     const nAtualiza = patPendentes.filter(p => p._acao === 'atualizar').length;
     if (statusEl) statusEl.textContent = lista.length + ' patente(s) encontrada(s) (' + nAtualiza + ' já cadastrada(s), vão atualizar). Revise abaixo — em especial a Descrição — antes de salvar.';
     patPreviewRender();
@@ -14761,6 +14911,95 @@ async function patExtrairComIA() {
     if (statusEl) statusEl.textContent = '';
     btn.disabled = false;
   }
+}
+// v34.0 — Seção 103: extrai a primeira data DD/MM/AAAA (ou D/M/AAAA) de dentro
+// de um texto livre — separa a data da "Próxima Retribuição" da planilha
+// (que vem como "4ª anuidade - 14/05/2027") sem precisar de IA.
+function patExtrairDataBR(texto) {
+  const m = String(texto || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return '';
+  const dia = m[1].padStart(2, '0'), mes = m[2].padStart(2, '0'), ano = m[3];
+  return ano + '-' + mes + '-' + dia;
+}
+// Mapa de cabeçalho normalizado (sem acento/maiúscula, via normalizarTexto()
+// já existente no app) → campo interno da patente. Mesmo molde de coluna do
+// relatório "Relatório de Patentes no Brasil - Detalhado" que o Agente de IA
+// já lê — aqui é leitura direta de planilha, sem IA, sem custo.
+const PAT_XLSX_CAMPOS = {
+  'processo': 'numero_processo',
+  'titulo da invencao ou modelo de utilidade (54)': 'titulo_oficial',
+  'proxima retribuicao': '_proxima_retribuicao_raw',
+  'situacao': 'situacao',
+  'status': 'status',
+  'titular': 'titular',
+  'natureza patente': 'tipo',
+  'resumo': 'resumo',
+  'observacoes': 'obs_relatorio'
+};
+async function patImportarXLSX() {
+  const inp = document.getElementById('pat-arquivo-xlsx');
+  const f = inp && inp.files && inp.files[0];
+  if (!f) { toast('Selecione um arquivo .xlsx.', 'err'); return; }
+  if (typeof XLSX === 'undefined') { toast('Biblioteca de planilha não carregou. Verifique sua conexão e recarregue a página.', 'err'); return; }
+  const statusEl = document.getElementById('pat-imp-xlsx-status');
+  const btn = document.getElementById('pat-extrair-xlsx-btn');
+  btn.disabled = true;
+  if (statusEl) statusEl.textContent = 'Lendo planilha...';
+  try {
+    const buf = await f.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    // Varre TODAS as abas procurando uma linha com a coluna "Processo" — não
+    // assume que é sempre a 1ª aba nem que o cabeçalho está na 1ª linha (o
+    // modelo do titular tem título/fonte nas 2 primeiras linhas da aba).
+    let linhaCabecalho = null, linhasDados = null;
+    for (const nomeAba of wb.SheetNames) {
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[nomeAba], { header: 1, defval: '', blankrows: false });
+      const idx = aoa.findIndex(row => row.some(cel => normalizarTexto(cel) === 'processo'));
+      if (idx >= 0) { linhaCabecalho = aoa[idx]; linhasDados = aoa.slice(idx + 1); break; }
+    }
+    if (!linhaCabecalho) { toast('Não encontrei uma coluna "Processo" em nenhuma aba da planilha.', 'err'); if (statusEl) statusEl.textContent = ''; btn.disabled = false; return; }
+    const mapaColuna = linhaCabecalho.map(h => PAT_XLSX_CAMPOS[normalizarTexto(h)] || null);
+    const naoReconhecidas = linhaCabecalho.filter((h, i) => h && !mapaColuna[i]);
+    const brutos = linhasDados
+      .filter(row => row.some(cel => String(cel || '').trim()))
+      .map(row => {
+        const obj = {};
+        mapaColuna.forEach((campo, i) => { if (campo) obj[campo] = row[i] != null ? String(row[i]).trim() : ''; });
+        return obj;
+      })
+      .filter(obj => obj.numero_processo);
+    if (!brutos.length) { toast('Nenhuma linha com número de processo encontrada na planilha.', 'warn'); if (statusEl) statusEl.textContent = ''; btn.disabled = false; return; }
+    const novos = brutos.map(b => patMontarPendente({
+      numero_processo: b.numero_processo, status: b.status, tipo: b.tipo,
+      situacao: b.situacao, titular: b.titular,
+      proxima_retribuicao: patExtrairDataBR(b._proxima_retribuicao_raw), proxima_retribuicao_label: b._proxima_retribuicao_raw,
+      titulo_oficial: b.titulo_oficial, resumo: b.resumo, obs_relatorio: b.obs_relatorio
+    }, 'xlsx'));
+    patMesclarPendentes(novos);
+    patAtualizarBannersImportacao(naoReconhecidas.length ? ['Colunas da planilha não reconhecidas (ignoradas): ' + naoReconhecidas.join(', ')] : []);
+    const nAtualiza = patPendentes.filter(p => p._acao === 'atualizar').length;
+    if (statusEl) statusEl.textContent = novos.length + ' patente(s) lida(s) da planilha (' + nAtualiza + ' de ' + patPendentes.length + ' no total vão atualizar). Revise abaixo — em especial a Descrição — antes de salvar.';
+    inp.value = '';
+    patPreviewRender();
+  } catch (e) {
+    console.error('[PATENTES]', e);
+    toast('Falha ao processar a planilha: ' + e.message, 'err');
+    if (statusEl) statusEl.textContent = '';
+  }
+  btn.disabled = false;
+}
+// v34.0 — Seção 104: texto longo (Resumo, Observações...) mostrado truncado
+// com um toggle nativo pra abrir o conteúdo inteiro numa caixa com rolagem —
+// <details>/<summary> em vez de JS próprio: funciona por teclado e leitor de
+// tela de graça (V0.2), sem precisar guardar o texto completo em atributo.
+function patTextoExpansivel(texto, limite, larguraPx) {
+  const t = String(texto || '').trim();
+  if (!t) return '<span style="color:var(--tx3)">—</span>';
+  if (t.length <= limite) return `<span style="font-size:11px">${escapeHtml(t)}</span>`;
+  return `<details style="max-width:${larguraPx || 220}px">
+    <summary style="cursor:pointer;font-size:11px;color:var(--ac2)">${escapeHtml(truncar(t, limite))} <span style="color:var(--tx3)">▾ ver mais</span></summary>
+    <div style="font-size:11px;white-space:pre-wrap;margin-top:4px;max-height:180px;overflow-y:auto;padding:6px;background:var(--sf2);border-radius:var(--r)">${escapeHtml(t)}</div>
+  </details>`;
 }
 function patPreviewRender() {
   const wrap = document.getElementById('pat-preview-wrap');
@@ -14774,6 +15013,8 @@ function patPreviewRender() {
     <td>${escapeHtml(p.situacao || '—')}${p.status ? ' / ' + escapeHtml(p.status) : ''}</td>
     <td>${p.proxima_retribuicao ? fD(p.proxima_retribuicao) : '—'}${p.proxima_retribuicao_label ? ' <span style="color:var(--tx2)">(' + escapeHtml(p.proxima_retribuicao_label) + ')</span>' : ''}</td>
     <td style="font-size:11px">${escapeHtml(truncar(p.titular || '—', 30))}</td>
+    <td>${patTextoExpansivel(p.resumo, 60, 240)}</td>
+    <td>${patTextoExpansivel(p.obs_relatorio, 60, 240)}</td>
     <td><input value="${escapeAttr(p.titulo)}" placeholder="Nome popular da patente" oninput="patPreviewSetCampo(${idx},'titulo',this.value)" style="width:150px"></td>
     <td><textarea rows="2" placeholder="Descreva a invenção — não vem no relatório" oninput="patPreviewSetCampo(${idx},'descricao',this.value)" style="width:220px;${p.descricao ? '' : 'border-color:var(--am)'}">${escapeHtml(p.descricao)}</textarea></td>
     <td><button class="btn btn-sm btn-icon" title="Remover desta importação" onclick="patPendentes.splice(${idx},1);patPreviewRender()"><i class="fa-solid fa-xmark"></i></button></td>
@@ -14800,13 +15041,16 @@ async function patSalvarPendentes() {
       // o que vier em params, então o resto do registro fica intacto).
       const body = {};
       PAT_CAMPOS_RELATORIO.forEach(c => { if (p[c] !== undefined) body[c] = p[c]; });
+      const existenteAtual = pats.find(x => String(x.id) === String(p._matchId));
+      body.despachos_log = patAcrescentarDespacho(existenteAtual?.despachos_log, p.ultimo_despacho_data, p.ultimo_despacho_descricao, p.origem);
       const r = await patenteSalvar(p._matchId, body);
-      if (r.ok) { ok++; atualizadas++; registrarHistorico('patente', p._matchId, p.numero_processo || '', 'atualizou (reimportação PDF)'); }
+      if (r.ok) { ok++; atualizadas++; registrarHistorico('patente', p._matchId, p.numero_processo || '', 'atualizou (reimportação ' + (p.origem === 'xlsx' ? 'planilha' : 'PDF') + ')'); }
       else falhas++;
     } else {
       const { _matchId, _acao, ...body } = p;
+      body.despachos_log = patAcrescentarDespacho('', p.ultimo_despacho_data, p.ultimo_despacho_descricao, p.origem);
       const r = await patenteSalvar('', body);
-      if (r.ok) { ok++; registrarHistorico('patente', r.id || '', p.titulo || p.numero_processo || '', 'criou (importação PDF)'); }
+      if (r.ok) { ok++; registrarHistorico('patente', r.id || '', p.titulo || p.numero_processo || '', 'criou (importação ' + (p.origem === 'xlsx' ? 'planilha' : 'PDF') + ')'); }
       else falhas++;
     }
   }
@@ -14815,7 +15059,104 @@ async function patSalvarPendentes() {
   await patentesRecarregar();
 }
 
-// ── Exportar relatório PDF consolidado (mesmo padrão print-report/html2pdf.js das demais seções) ──
+// v34.0 — Seção 109: exportação configurável — escolher QUAIS patentes e
+// QUAIS colunas exportar, em PDF (impressão) ou Excel. xlsxHeader casa com o
+// cabeçalho do modelo de planilha que o Agente de Importação (Seção 103) lê
+// de volta — exportar e reimportar usam o mesmo nome de coluna.
+const PAT_EXPORT_COLUNAS = [
+  { key: 'numero_processo', label: 'Processo', xlsxHeader: 'Processo', padrao: true },
+  { key: 'titulo_oficial', label: 'Título oficial (54)', xlsxHeader: 'Título da Invenção ou Modelo de Utilidade (54)', padrao: false },
+  { key: 'titulo', label: 'Título (popular)', xlsxHeader: 'Título (popular)', padrao: true },
+  { key: 'proxima_retribuicao_fmt', label: 'Próxima Retribuição', xlsxHeader: 'Próxima Retribuição', padrao: true },
+  { key: 'situacao', label: 'Situação', xlsxHeader: 'Situação', padrao: false },
+  { key: 'status', label: 'Status', xlsxHeader: 'Status', padrao: true },
+  { key: 'titular', label: 'Titular', xlsxHeader: 'Titular', padrao: false },
+  { key: 'tipo', label: 'Natureza Patente', xlsxHeader: 'Natureza Patente', padrao: false },
+  { key: 'resumo', label: 'Resumo', xlsxHeader: 'Resumo', padrao: false },
+  { key: 'obs_relatorio', label: 'Observações (relatório)', xlsxHeader: 'Observações', padrao: false },
+  { key: 'obs', label: 'Observações (minhas)', xlsxHeader: 'Observações internas', padrao: false },
+  { key: 'projeto_nome', label: 'Projeto', xlsxHeader: 'Projeto', padrao: true },
+  { key: 'responsavel', label: 'Responsável', xlsxHeader: 'Responsável', padrao: true }
+];
+function patValorExport(p, key) {
+  if (key === 'proxima_retribuicao_fmt') {
+    const s = p.proxima_retribuicao ? fD(p.proxima_retribuicao) : '';
+    return (s + (p.proxima_retribuicao_label ? ' (' + p.proxima_retribuicao_label + ')' : '')).trim() || '—';
+  }
+  if (key === 'projeto_nome') return p.projetoId ? (proj.find(x => String(x.id) === String(p.projetoId))?.nome || '—') : '—';
+  return p[key] || '—';
+}
+function abrirModalExportarPatentes() {
+  const ativos = pats.filter(p => !(p.arquivado === true || p.arquivado === 'true'));
+  if (!ativos.length) { toast('Nenhuma patente ativa para exportar.', 'err'); return; }
+  const linhasPatentes = ativos.map(p => `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px">
+    <input type="checkbox" class="pat-exp-patente" value="${escapeAttr(p.id)}" checked style="width:auto">
+    ${escapeHtml(p.numero_processo || '—')} — ${escapeHtml(p.titulo || p.titulo_oficial || '(sem título)')}
+  </label>`).join('');
+  const linhasColunas = PAT_EXPORT_COLUNAS.map(c => `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px">
+    <input type="checkbox" class="pat-exp-coluna" value="${escapeAttr(c.key)}" ${c.padrao ? 'checked' : ''} style="width:auto">
+    ${escapeHtml(c.label)}
+  </label>`).join('');
+  document.getElementById('modal-root').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="max-width:640px"><div class="modal-header"><div class="modal-title">Exportar relação de patentes</div><button class="btn btn-sm btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="modal-body">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px">Patentes (${ativos.length})
+          <button class="btn btn-sm" style="font-size:10px;padding:1px 6px;margin-left:6px" onclick="document.querySelectorAll('.pat-exp-patente').forEach(c=>c.checked=true)">Todas</button>
+          <button class="btn btn-sm" style="font-size:10px;padding:1px 6px" onclick="document.querySelectorAll('.pat-exp-patente').forEach(c=>c.checked=false)">Nenhuma</button>
+        </div>
+        <div style="max-height:260px;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--r);padding:6px">${linhasPatentes}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px">Colunas</div>
+        <div style="max-height:260px;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--r);padding:6px">${linhasColunas}</div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-sm" onclick="patGerarExportacao('xlsx')"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
+    <button class="btn btn-primary" onclick="patGerarExportacao('pdf')"><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button>
+  </div>
+  </div></div>`;
+}
+function patGerarExportacao(formato) {
+  const idsSelecionados = Array.from(document.querySelectorAll('.pat-exp-patente:checked')).map(el => el.value);
+  const colunasSelecionadas = PAT_EXPORT_COLUNAS.filter(c => document.querySelector('.pat-exp-coluna[value="' + c.key + '"]')?.checked);
+  if (!idsSelecionados.length) { toast('Selecione ao menos uma patente.', 'err'); return; }
+  if (!colunasSelecionadas.length) { toast('Selecione ao menos uma coluna.', 'err'); return; }
+  const selecionadas = pats.filter(p => idsSelecionados.includes(String(p.id)));
+  const ordenadas = [...selecionadas].sort((a, b) => {
+    const pa = proximoPrazoPatente(a), pb = proximoPrazoPatente(b);
+    if (pa && pb) return pa.dias - pb.dias;
+    return pa ? -1 : (pb ? 1 : 0);
+  });
+  if (formato === 'xlsx') {
+    if (typeof XLSX === 'undefined') { toast('Biblioteca de planilha não carregou.', 'err'); return; }
+    const cab = colunasSelecionadas.map(c => c.xlsxHeader);
+    const linhas = ordenadas.map(p => colunasSelecionadas.map(c => patValorExport(p, c.key)));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cab, ...linhas]), 'Patentes');
+    XLSX.writeFile(wb, 'Patentes_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    closeModal();
+    toast(ordenadas.length + ' patente(s) exportada(s) em Excel.');
+  } else {
+    const linhasHtml = ordenadas.map(p => '<tr>' + colunasSelecionadas.map(c => `<td>${escapeHtml(String(patValorExport(p, c.key)))}</td>`).join('') + '</tr>').join('');
+    const html = `
+      <div class="rp-header">
+        <div class="rp-empresa">${(typeof cfg !== 'undefined' && cfg.empresa) || 'Megatec Engenharia'} — Gestão de Engenharia</div>
+        <div class="rp-titulo">Relatório de Patentes</div>
+        <div class="rp-meta">Gerado em ${new Date().toLocaleDateString('pt-BR')} · ${ordenadas.length} patente(s)</div>
+      </div>
+      <table class="rp-table"><thead><tr>${colunasSelecionadas.map(c => `<th>${escapeHtml(c.label)}</th>`).join('')}</tr></thead><tbody>${linhasHtml}</tbody></table>
+    `;
+    document.getElementById('print-report').innerHTML = html;
+    closeModal();
+    window.print();
+  }
+}
+// ── Exportar relatório PDF consolidado (mesmo padrão print-report/html2pdf.js das demais seções) — mantido, sem uso direto na UI desde a v34.0 (substituído pelo modal acima) ──
 function patExportarPDF() {
   const ativos = pats.filter(p => !(p.arquivado === true || p.arquivado === 'true'));
   if (!ativos.length) { toast('Nenhuma patente ativa para exportar.', 'err'); return; }
