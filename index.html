@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <!-- v30.0 — Seção 90: leitura de PDF 100% no navegador (pdf.js) para o Agente de Extração de Patentes. Nenhum binário sobe pro Apps Script — só o texto já extraído. -->
 <!-- v34.0 — Seções 103-109: importação de planilha XLSX sem IA, texto expansível (Resumo/Observações), alerta de disputa/nulidade, painel de portfólio por titular/natureza, busca de anterioridade assistida, histórico de despachos e exportação configurável (patentes + colunas, PDF ou Excel). -->
+<!-- v35.0 — Seções 110-117: Visão Macro do Gantt (diretoria) + resumo executivo/ordenação/selo de atraso no Gantt + Modo Apresentação ampliado + resumo executivo em Gráficos + PDF do Gantt + Fila por Projeto. 100% local-only, sem mudança no Código.gs. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{--bg:#f2f1ed;--sf:#fff;--sf2:#f0efe9;--bd:#e0dfd7;--bd2:#c8c7bf;--tx:#1a1a18;--tx2:#6b6b62;--tx3:#9b9b90;--ac:#1a3a5c;--ac2:#2563a8;--acbg:#e8f0fb;--gn:#2d6a3f;--gnbg:#e8f5ec;--am:#7a4a00;--ambg:#fef3e2;--rd:#8b1f1f;--rdbg:#fdecea;--pu:#3d2080;--pubg:#f0ecff;--pa:#b3185f;--pabg:#fbe4ee;--pm:#0f7a8c;--pmbg:#e0f3f5;--pb:#5a6b7a;--pbbg:#eaedf0;--r:6px;--rl:10px;--fn:'IBM Plex Sans',sans-serif;--mn:'IBM Plex Mono',monospace}
@@ -188,6 +189,18 @@ tr:hover td{background:var(--sf2)}
 .gact-pause{background:#f59e0b;color:#3a1a00}
 .gact-done{background:#2d6a3f;color:#fff}
 .gact-open{background:var(--ac);color:#fff}
+/* v35.0 — Seção 110: Visão Macro do Gantt — linhas maiores, sem coluna AÇÕES */
+.gantt-macro .gl-hdr,.gantt-macro .gl-row{height:40px}
+.gantt-macro .gr-row{height:40px}
+.gantt-macro .gl-cell{font-size:13px}
+.gantt-macro .gl-cell.right{font-size:11px}
+.gantt-macro .gl-cell.act{visibility:hidden}
+.gantt-macro .g-bar{top:8px;height:26px;font-size:12px}
+/* v35.0 — Seção 113: selo de atraso visível direto na barra, sem precisar do hover */
+.g-late-badge{position:absolute;top:6px;font-size:9px;font-family:var(--mn);font-weight:700;background:var(--rd);color:#fff;border-radius:3px;padding:1px 5px;white-space:nowrap;z-index:3;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+/* v35.0 — Seção 111: faixa de indicadores no topo do Gantt */
+.gantt-resumo{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:8px 12px;margin-bottom:8px;font-size:12px;font-family:var(--mn)}
+.gantt-resumo b{font-size:14px;font-family:var(--fn)}
 /* FILA */
 .fila-block{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:9px;overflow:hidden}
 .fila-hdr{padding:9px 12px;display:flex;align-items:center;gap:9px;background:var(--sf2);border-bottom:1px solid var(--bd);cursor:pointer}
@@ -438,6 +451,9 @@ tr:hover td{background:var(--sf2)}
 .apresentacao-overlay .ap-dots{position:absolute;bottom:24px;display:flex;gap:7px}
 .apresentacao-overlay .ap-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35)}
 .apresentacao-overlay .ap-dot.ativo{background:#fff}
+/* v35.0 — Seção 114: slides de lista (Top Riscos / Panorama de Prazos) */
+.apresentacao-overlay .ap-lista{display:flex;flex-direction:column;gap:10px;max-width:640px;text-align:left}
+.apresentacao-overlay .ap-lista-item{font-size:20px;background:rgba(255,255,255,.12);border-radius:8px;padding:10px 16px}
 
 /* ── Brainstorming / Banco de Ideias (v17.0) ── */
 .bs-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
@@ -973,36 +989,69 @@ tr:hover td{background:var(--sf2)}
       <div id="page-gantt" class="page">
         <div class="sec-header"><span class="sec-title">Cronograma Gantt</span>
           <div class="filters">
+            <button class="btn btn-sm" id="btn-gantt-macro" data-feat="ganttVisaoMacro" onclick="toggleGanttMacro()" title="Modo enxuto para apresentar à diretoria: só a linha de cada projeto, linhas maiores, sem coluna de ações"><i class="fa-solid fa-building"></i> <span id="gantt-macro-label">Visão Macro (Diretoria)</span></button>
             <select class="fsel" id="fg-eng" onchange="renderGantt()"><option value="">Todos (engenheiro)</option></select>
             <select class="fsel" id="fg-status" onchange="renderGantt()" title="Filtra etapas e tarefas pelo status"><option value="">Todos (status)</option><option value="pend">Só pendentes</option><option value="conc">Só concluídos</option></select>
             <select class="fsel" id="fg-tipo" onchange="renderGantt()" title="Escolhe o que aparece na lista: só a linha do projeto, só etapas/tarefas, ou os dois juntos (padrão)"><option value="">Projetos + Etapas/Tarefas</option><option value="proj">Só projetos</option><option value="itens">Só etapas e tarefas</option></select>
+            <select class="fsel" id="fg-ordem" data-feat="ganttOrdenacao" onchange="renderGantt()" title="Ordem das linhas de projeto"><option value="">Ordem de cadastro</option><option value="risco">Risco (mais crítico primeiro)</option><option value="prazo">Prazo (mais próximo primeiro)</option><option value="nome">Nome (A-Z)</option></select>
             <button class="btn btn-sm" id="btn-trava-cron" onclick="toggleTravaCronograma()" title="Travar/destravar edição de datas do cronograma (só superadmin)"><i class="fa-solid fa-lock-open" id="trava-cron-icon"></i> <span id="trava-cron-label">Destravado</span></button>
             <button class="btn btn-sm" onclick="gS(-30)" title="Recuar 30 dias"><i class="fa-solid fa-chevron-left"></i></button>
             <button class="btn btn-sm" onclick="gR()">Hoje</button>
             <button class="btn btn-sm" onclick="gS(30)" title="Avançar 30 dias"><i class="fa-solid fa-chevron-right"></i></button>
             <button class="btn btn-sm" onclick="gZ(-6)" title="Diminuir zoom">−</button>
             <button class="btn btn-sm" onclick="gZ(6)" title="Aumentar zoom">+</button>
+            <button class="btn btn-sm btn-primary" data-feat="ganttExportarPDF" onclick="ganttBaixarPDF()" title="Baixar PDF do cronograma como está na tela agora (ative a Visão Macro antes, para o PDF sair enxuto)"><i class="fa-solid fa-file-arrow-down"></i> PDF</button>
           </div>
         </div>
+        <!-- v35.0 — Seção 111: resumo executivo, preenchido por renderGantt() -->
+        <div id="gantt-resumo" class="gantt-resumo" data-feat="ganttResumoExecutivo"></div>
         <!-- Legenda Gantt -->
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--tx2);background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:7px 11px">
-          <span style="font-weight:600;font-size:10px;font-family:var(--mn);color:var(--tx);text-transform:uppercase;letter-spacing:.04em">Legenda</span>
-          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#c0392b;border-radius:3px;display:inline-block"></span>Alta · Em risco</span>
-          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#2563a8;border-radius:3px;display:inline-block"></span>Média / Em andamento</span>
-          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#1a9e75;border-radius:3px;display:inline-block"></span>Baixa</span>
-          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#2d6a3f;border-radius:3px;display:inline-block"></span>Concluído ✓</span>
+        <!-- v35.0 (corrigido) — a legenda original misturava, num único grupo, a
+             cor da barra de PROJETO (bCol(): por prioridade + Concluído/Pausado)
+             com a cor da barra de ETAPA/TAREFA (por status, incl. atraso de
+             verdade) — são DUAS paletas diferentes desenhando na mesma tela, e os
+             valores hex estavam desatualizados em relação às funções reais. Agora
+             a legenda separa os dois grupos e usa os mesmos hex de bCol()/ebc/tbc. -->
+        <div id="gantt-legenda-full" style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--tx2);background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:7px 11px">
+          <span style="font-weight:600;font-size:10px;font-family:var(--mn);color:var(--tx);text-transform:uppercase;letter-spacing:.04em">Projeto · cor = prioridade</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#b3185f;border-radius:3px;display:inline-block"></span>Alta</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#0f7a8c;border-radius:3px;display:inline-block"></span>Média</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#5a6b7a;border-radius:3px;display:inline-block"></span>Baixa</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#888;border-radius:3px;display:inline-block"></span>Pausado</span>
+          <span style="width:1px;height:16px;background:var(--bd2);display:inline-block"></span>
+          <span style="font-weight:600;font-size:10px;font-family:var(--mn);color:var(--tx);text-transform:uppercase;letter-spacing:.04em">Etapa/Tarefa · cor = status</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#2563a8;border-radius:3px;display:inline-block"></span>Em andamento</span>
           <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#cc3333;border-radius:3px;display:inline-block"></span>Atrasado ⚠</span>
           <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#999;border-radius:3px;display:inline-block;opacity:.8"></span>Pendente</span>
+          <span style="width:1px;height:16px;background:var(--bd2);display:inline-block"></span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#2d6a3f;border-radius:3px;display:inline-block"></span>Concluído ✓ (as duas)</span>
           <span style="display:flex;align-items:center;gap:4px"><span style="width:2px;height:16px;background:#e24b4a;display:inline-block"></span>Hoje</span>
-          <span style="color:var(--tx3);font-size:10px;margin-left:4px">· Faixa clara dentro da barra = % concluído · Passe o mouse sobre a barra para detalhes</span>
+          <span style="color:var(--tx3);font-size:10px;margin-left:4px">· Selo <b style="background:var(--rd);color:#fff;border-radius:3px;padding:0 4px;font-family:var(--mn)">⚠ Xd</b> = projeto atrasado (barra de projeto não muda de cor por atraso, só a de etapa/tarefa muda)</span>
+          <span style="color:var(--tx3);font-size:10px">· Faixa clara dentro da barra = % concluído · Passe o mouse sobre a barra para detalhes</span>
           <span style="color:var(--tx3);font-size:10px">· 🔒 no botão "Travado" = só superadmin edita datas de projetos/etapas/tarefas agora</span>
+        </div>
+        <!-- v35.0 — Seção 110: legenda reduzida, só aparece com a Visão Macro ligada -->
+        <!-- v35.0 (corrigido) — a cor da barra de PROJETO é por prioridade (bCol()),
+             não por atraso. Atraso é o selo "⚠ Xd" ao lado da barra (Seção 113),
+             nunca a cor de fundo dela — a legenda tem que dizer exatamente isso,
+             senão a Visão Macro engana quem ela deveria simplificar. -->
+        <div id="gantt-legenda-macro" style="display:none;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--tx2);background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:7px 11px">
+          <span style="font-weight:600;font-size:10px;font-family:var(--mn);color:var(--tx);text-transform:uppercase;letter-spacing:.04em">Legenda · cor = prioridade</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#b3185f;border-radius:3px;display:inline-block"></span>Alta prioridade</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#0f7a8c;border-radius:3px;display:inline-block"></span>Média prioridade</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#5a6b7a;border-radius:3px;display:inline-block"></span>Baixa prioridade</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#2d6a3f;border-radius:3px;display:inline-block"></span>Concluído ✓</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:12px;background:#888;border-radius:3px;display:inline-block"></span>Pausado</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="font-size:9px;font-weight:700;background:var(--rd);color:#fff;border-radius:3px;padding:1px 5px">⚠ Xd</span>Atrasado — selo ao lado da barra, não é a cor dela</span>
+          <span style="color:var(--tx3);font-size:10px;margin-left:4px">· Clique numa barra para abrir o projeto</span>
         </div>
         <div id="gantt-container"></div>
       </div>
 
       <div id="page-fila" class="page">
-        <div class="sec-header"><span class="sec-title">Fila por Engenheiro</span>
+        <div class="sec-header"><span class="sec-title" id="fila-titulo">Fila por Engenheiro</span>
           <div class="filters">
+            <button class="btn btn-sm" id="btn-fila-modo" data-feat="filaPorProjeto" onclick="toggleFilaModo()" title="Alterna entre agrupar a fila por pessoa ou por projeto"><i class="fa-solid fa-arrow-right-arrow-left"></i> <span id="fila-modo-label">Ver por Projeto</span></button>
             <select class="fsel" id="ff-st" onchange="renderFila()"><option value="">Status</option><option>Em andamento</option><option>Pendente</option><option>Concluído</option></select>
             <select class="fsel" id="ff-pr" onchange="renderFila()"><option value="">Prioridade</option><option>Alta</option><option>Média</option><option>Baixa</option></select>
           </div>
@@ -1091,6 +1140,8 @@ tr:hover td{background:var(--sf2)}
           </div>
         </div>
         <div id="charts-filtro-info" style="font-size:11px;color:var(--tx2);margin-bottom:10px;font-family:var(--mn)"></div>
+        <!-- v35.0 — Seção 115: resumo executivo (texto), preenchido por renderCharts() -->
+        <div id="charts-resumo-exec" class="help-tip" data-feat="graficosResumoExecutivo" style="display:none;margin:0 0 12px"></div>
         <div class="chart-grid">
           <div class="chart-card"><div class="chart-card-title">Status — Projetos · Etapas · Tarefas</div><div style="position:relative;height:190px"><canvas id="c-status"></canvas></div></div>
           <div class="chart-card"><div class="chart-card-title">Horas realizadas por engenheiro</div><div id="c-carga-w" style="position:relative"><canvas id="c-carga"></canvas></div></div>
@@ -1321,7 +1372,7 @@ tr:hover td{background:var(--sf2)}
           </div>
         </div>
         <div style="background:var(--ac);color:rgba(255,255,255,.8);border-radius:var(--rl);padding:14px;font-size:13px">
-          <b style="color:#fff">Megatec Engenharia</b> — Sistema de Gestão · v31.0 Google Sheets Edition
+          <b style="color:#fff">Megatec Engenharia</b> — Sistema de Gestão · v35.0 Google Sheets Edition
         </div>
         <!-- BACKUP -->
         <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rl);padding:14px;margin-top:12px">
@@ -2481,6 +2532,37 @@ tr:hover td{background:var(--sf2)}
       <div class="help-tip">⚠️ <b>Aviso técnico para o desenvolvedor:</b> o campo novo <code>mc_itens_sem_prazo</code> precisa ser adicionado à whitelist <code>CAMPOS.projetos</code> do backend (Código.gs), igual aconteceu com <code>descricao</code> na v17.0 — sem isso, o valor é descartado em silêncio ao salvar (padrão de defeito já catalogado como lição L12). Nenhuma coluna nova precisa ser criada manualmente na planilha — <code>garantirColunas</code> já cuida disso.</div>
     </div>
 
+    <div class="help-section">
+      <h3>🆕 Novidades da v35.0 — Visão Macro do Gantt + 7 melhorias para a Diretoria</h3>
+      <p>O Gantt com projeto + todas as etapas + todas as tarefas juntos ficou poluído para quem só precisa do panorama geral. Esta rodada acrescenta um modo macro dedicado e mais 7 melhorias em Gantt, Gráficos, Visão Geral e Fila, todas na mesma linha: simplificar a leitura para quem não acompanha o dia a dia operacional. <b>100% local (<code>index.html</code>) — nenhuma mudança no backend (Código.gs), nenhum campo novo na planilha.</b></p>
+
+      <h4 style="margin-top:14px"><b>🏢 Visão Macro (Diretoria) no Gantt</b></h4>
+      <p>Botão novo no topo do Gantt. Ligado: mostra só a linha de cada projeto (sem etapas/tarefas), linhas maiores e coluna AÇÕES escondida — pensado para quem só precisa ver "como estão os projetos", não editar tarefa por tarefa. Clique na barra do projeto continua abrindo os detalhes dele. A escolha fica lembrada entre sessões (como o modo escuro).</p>
+
+      <h4 style="margin-top:14px"><b>📌 Resumo executivo no topo do Gantt</b></h4>
+      <p>Faixa com "N projetos no filtro · X em risco alto · Y atrasados · Z em dia", calculada com o mesmo critério do Painel de Risco (Visão Geral).</p>
+
+      <h4 style="margin-top:14px"><b>↕️ Ordenar o Gantt por risco, prazo ou nome</b></h4>
+      <p>Novo seletor "Ordem de cadastro / Risco / Prazo / Nome" ao lado dos filtros de sempre — coloca o projeto mais crítico no topo da lista, em vez de depender da ordem em que foi cadastrado.</p>
+
+      <h4 style="margin-top:14px"><b>⚠️ Selo de atraso visível na barra</b></h4>
+      <p>Projeto atrasado ganha um selo "⚠ Xd" ao lado da própria barra no Gantt — antes só aparecia passando o mouse (tooltip). Mais útil ainda na Visão Macro, onde não há sub-linhas para conferir o motivo do atraso.</p>
+
+      <h4 style="margin-top:14px"><b>🖥️ Modo Apresentação com 2 slides novos</b></h4>
+      <p>O Modo Apresentação da Visão Geral (slideshow de KPIs) ganha "Projetos em maior risco" (top 5) e "Panorama de prazos" — mesmos dados do Painel de Risco, em formato de slide para reunião.</p>
+
+      <h4 style="margin-top:14px"><b>📝 Resumo executivo (texto) em Gráficos</b></h4>
+      <p>Parágrafo automático no topo da página Gráficos — quantos projetos no filtro atual, quantos em risco alto (com nome), atraso médio dos itens vencidos e qual o maior atraso. Sobre os mesmos projetos que os gráficos da página já mostram.</p>
+
+      <h4 style="margin-top:14px"><b>📄 Exportar o Gantt em PDF</b></h4>
+      <p>Botão PDF novo no Gantt, mesmo padrão de Gráficos/Eficiência. Em vez de tentar capturar a régua de dias (largura variável, arriscado num PDF), gera uma <b>tabela</b> (projeto, líder, status, risco, início, fim, atraso) — sempre legível em A4 paisagem, e sempre igual ao que o resumo executivo mostra na tela.</p>
+
+      <h4 style="margin-top:14px"><b>🗂️ Fila por Projeto</b></h4>
+      <p>A página Fila, que só existia agrupada "por Engenheiro", ganha um alternador para ver "por Projeto" — mesmas tarefas, agrupadas pelo projeto em vez da pessoa, ordenadas por risco (projeto com fila mais crítica primeiro). Útil para ver em que projeto o trabalho pendente está empilhando, não só quem está sobrecarregado.</p>
+
+      <div class="help-tip">🔧 Cada uma das 8 melhorias tem sua própria chave em <code>FEATURES</code> (<code>ganttVisaoMacro</code>, <code>ganttResumoExecutivo</code>, <code>ganttOrdenacao</code>, <code>ganttSeloAtraso</code>, <code>apresentacaoAmpliada</code>, <code>graficosResumoExecutivo</code>, <code>ganttExportarPDF</code>, <code>filaPorProjeto</code>) — pode desligar qualquer uma isoladamente, sem afetar as outras nem o resto do sistema.</div>
+    </div>
+
   </div>
 </div>
 
@@ -2972,11 +3054,23 @@ const FEATURES = {
   notifPatentes: true,           // v31.0 — Prazos de patente também no sino central de notificações (Seção 97)
   backupPatentes: true,          // v31.0 — Exportar/Importar JSON dedicado de Patentes (Seção 98)
   timelinePatente: true,         // v31.0 — Linha do tempo de mudanças de status por patente (Seção 99)
-  ideiaParaPatente: true         // v31.0 — Converter ideia do Brainstorming em pré-cadastro de Patente (Seção 100)
+  ideiaParaPatente: true,        // v31.0 — Converter ideia do Brainstorming em pré-cadastro de Patente (Seção 100)
+  // ── v35.0 · Gantt Macro (Diretoria) + 7 melhorias — todas local-only ──
+  // Colocar em `false` faz a respectiva melhoria voltar exatamente ao
+  // comportamento da v34.0, sem afetar as demais.
+  ganttVisaoMacro: true,         // v35.0 — botão "Visão Macro (Diretoria)" no Gantt: só projetos, linhas maiores, sem coluna AÇÕES (Seção 110)
+  ganttResumoExecutivo: true,    // v35.0 — faixa de indicadores (ativos/risco/atrasados/em dia) no topo do Gantt (Seção 111)
+  ganttOrdenacao: true,          // v35.0 — ordenar o Gantt por risco/prazo/nome, além da ordem de cadastro (Seção 112)
+  ganttSeloAtraso: true,         // v35.0 — selo "⚠ Xd" visível na própria barra do projeto atrasado, sem precisar do hover (Seção 113)
+  apresentacaoAmpliada: true,    // v35.0 — Modo Apresentação ganha slides de Top Riscos e Panorama de Prazos (Seção 114)
+  graficosResumoExecutivo: true, // v35.0 — parágrafo narrativo automático no topo de Gráficos (Seção 115)
+  ganttExportarPDF: true,        // v35.0 — botão "PDF" no Gantt, mesmo padrão de Gráficos/Eficiência (Seção 116)
+  filaPorProjeto: true           // v35.0 — alternador "Por Engenheiro / Por Projeto" na página Fila (Seção 117)
 };
 
 // ══ CONFIG ══
 const LC='geEng_cfg',LS='geEng_sess',LN='geEng_nlidas',LHIST='geEng_historico',LMAPAS='geEng_mapas',LTRAVA='geEng_travaCron',LCOB='geEng_cobrancaVistas',LTEMA='geEng_tema',LFAVPROJ='geEng_favProj';
+const LGMACRO='geEng_ganttMacro',LFILAMODO='geEng_filaModo'; // v35.0 — Seções 110 e 117
 // v23.0 — Seção 57: prazo único de sessão — mesma constante usada na restauração
 // (boot) e no monitor periódico (tab aberta), para nunca haver 2 prazos diferentes.
 /* ══ v28.0 — CONSTANTES DAS SEÇÕES 85/86/87 ════════════════════════════════
@@ -3002,6 +3096,12 @@ let gStart=new Date(),gDW=20;
 const TODAY=new Date();TODAY.setHours(0,0,0,0);
 gStart.setDate(gStart.getDate()-20);
 let syncTmr=null;
+// v35.0 — Seção 110: Visão Macro do Gantt, lembrada entre sessões (mesmo padrão de LTRAVA/LTEMA)
+let ganttMacroOn = FEATURES.ganttVisaoMacro && localStorage.getItem(LGMACRO)==='1';
+// v35.0 — Seção 117: modo da página Fila — 'eng' (padrão, comportamento de sempre) ou 'proj'
+let filaModo = (FEATURES.filaPorProjeto && localStorage.getItem(LFILAMODO)==='proj') ? 'proj' : 'eng';
+// v35.0 — Seções 111/116: snapshot dos projetos do último renderGantt(), para o PDF (Seção 116) nunca divergir da tela
+let _ganttPdfCache = [];
 let monitorSessaoTmr=null; // v23.0 — Seção 57
 
 // ══ UTILS ══
@@ -3824,6 +3924,32 @@ function renderCharts(){
       : `Sem filtro — mostrando todos os dados: ${projF.length} projeto(s), ${etaF.length} etapa(s), ${tarF.length} tarefa(s).`;
   }
 
+  // v35.0 — Seção 115: resumo executivo em texto, sobre os MESMOS projetos
+  // filtrados que os gráficos (projF, de aplicarFiltrosGraficos()) — só tira
+  // o arquivado, que não faz sentido entrar numa leitura de risco atual.
+  // Reaproveita riscoProjeto()/dL(), mesmas funções do Painel de Risco/Gantt.
+  const resumoExecEl=document.getElementById('charts-resumo-exec');
+  if(resumoExecEl && FEATURES.graficosResumoExecutivo){
+    const arqCharts=getArquivados();
+    const ativosCharts=projF.filter(p=>!arqCharts.includes(String(p.id)));
+    if(!ativosCharts.length){
+      resumoExecEl.style.display='none';
+    } else {
+      const riscosCharts=ativosCharts.map(riscoProjeto).filter(r=>r.nivel==='alto').sort((a,b)=>b.score-a.score);
+      const vencidosTodos=ativosCharts.map(p=>({p,d:dL(p.prazo)})).filter(x=>!isNaN(x.d)&&x.d<0&&x.p.status!=='Concluído');
+      const atrasoMedio=vencidosTodos.length?Math.round(vencidosTodos.reduce((s,x)=>s+Math.abs(x.d),0)/vencidosTodos.length):0;
+      const maiorAtraso=vencidosTodos.sort((a,b)=>a.d-b.d)[0];
+      const partesExec=[`<b>${ativosCharts.length}</b> projeto(s) ativo(s) no filtro atual`];
+      partesExec.push(riscosCharts.length
+        ? `<b>${riscosCharts.length}</b> em risco alto (${riscosCharts.slice(0,3).map(r=>escapeHtml(r.nome)).join(', ')}${riscosCharts.length>3?'…':''})`
+        : 'nenhum em risco alto');
+      if(vencidosTodos.length) partesExec.push(`atraso médio de <b>${atrasoMedio}d</b> nos itens vencidos`);
+      if(maiorAtraso) partesExec.push(`maior atraso: <b>${escapeHtml(maiorAtraso.p.nome)}</b> (${Math.abs(maiorAtraso.d)}d)`);
+      resumoExecEl.style.display='block';
+      resumoExecEl.innerHTML='📌 <b>Resumo executivo</b> — '+partesExec.join(' · ')+'.';
+    }
+  } else if(resumoExecEl) resumoExecEl.style.display='none';
+
   // ── Status: projetos + etapas + tarefas separados
   const sProj={},sEta={},sTar={};
   projF.forEach(p=>sProj[p.status]=(sProj[p.status]||0)+1);
@@ -4317,7 +4443,23 @@ async function concluirEtapaViaChecagem17h(et){
 }
 
 // ══ FILA ══
+// v35.0 — Seção 117: renderFila() virou despachante entre as duas visões —
+// "Por Engenheiro" (comportamento de sempre, preservado 100% em
+// renderFilaPorEngenheiro) e "Por Projeto" (nova, renderFilaPorProjeto).
 function renderFila(){
+  const titEl=document.getElementById('fila-titulo'),lblEl=document.getElementById('fila-modo-label');
+  if(titEl) titEl.textContent = filaModo==='proj' ? 'Fila por Projeto' : 'Fila por Engenheiro';
+  if(lblEl) lblEl.textContent = filaModo==='proj' ? 'Ver por Engenheiro' : 'Ver por Projeto';
+  if(FEATURES.filaPorProjeto && filaModo==='proj') renderFilaPorProjeto();
+  else renderFilaPorEngenheiro();
+}
+function toggleFilaModo(){
+  if(!FEATURES.filaPorProjeto) return;
+  filaModo = filaModo==='proj' ? 'eng' : 'proj';
+  localStorage.setItem(LFILAMODO, filaModo);
+  renderFila();
+}
+function renderFilaPorEngenheiro(){
   const fsV=document.getElementById('ff-st')?.value||'',fpV=document.getElementById('ff-pr')?.value||'';
   document.getElementById('fila-container').innerHTML=eng.map(e=>{
     // v29.0 — Seção 88 (P5): tarefa de projeto Pausado/Concluído/Arquivado não
@@ -4352,6 +4494,47 @@ function renderFila(){
       </div>`;}).join('')||'<p style="font-size:12px;color:var(--tx3)">Sem tarefas.</p>'}
     </div></div>`;}).join('');
 }
+// v35.0 — Seção 117: mesma tarefa, mesmo tk-row, agrupada por PROJETO em vez
+// de por engenheiro. projetoContabilizavel(p) já cobre arquivado/Pausado/
+// Concluído (Seção 88) — mesmo critério de "projeto ativo" do Gantt/Fila.
+// Ordenado por risco (riscoProjeto, Seção 81/112) — projeto com fila mais
+// crítica aparece primeiro.
+function renderFilaPorProjeto(){
+  const fsV=document.getElementById('ff-st')?.value||'',fpV=document.getElementById('ff-pr')?.value||'';
+  const projAtivos=proj.filter(projetoContabilizavel).map(p=>({p,risco:riscoProjeto(p)})).sort((a,b)=>b.risco.score-a.risco.score);
+  document.getElementById('fila-container').innerHTML=projAtivos.map(({p,risco})=>{
+    let tks=tar.filter(t=>t.projeto===p.nome);if(fpV)tks=tks.filter(t=>t.prioridade===fpV);
+    tks.sort((a,b)=>{const la=a.status!=='Concluído'&&a.prazo&&dL(a.prazo)<0,lb=b.status!=='Concluído'&&b.prazo&&dL(b.prazo)<0;if(la&&!lb)return-1;if(!la&&lb)return 1;const pa={Alta:0,Média:1,Baixa:2};return(pa[a.prioridade]||1)-(pa[b.prioridade]||1);});
+    let filt=[...tks];if(fsV)filt=filt.filter(t=>{const late=t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0;return(late?'Atrasado':t.status)===fsV;});
+    if(!tks.length && (fsV||fpV)) return ''; // projeto sem nenhuma tarefa batendo o filtro não polui a lista
+    const hrs=tks.reduce((a,t)=>a+(parseFloat(t.horas)||0),0);
+    const cH=tks.filter(t=>t.status==='Concluído').reduce((a,t)=>a+(parseFloat(t.horas)||0),0);
+    const pct=hrs>0?Math.min(100,Math.round(cH/hrs*100)):0;
+    const lC=risco.nivel==='alto'?'var(--rd)':risco.nivel==='medio'?'var(--am)':'var(--gn)';
+    return`<div class="fila-block"><div class="fila-hdr" onclick="tP('fbp-${p.id}',this)">
+      <div class="eng-av">${ini(p.nome)}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${p.nome}</div><div style="font-size:11px;color:var(--tx2)">${p.lider||'—'}</div></div>
+      <div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+        <div style="text-align:center"><div style="font-size:15px;font-weight:600;color:${lC}">${hrs}h</div><div style="font-size:10px;font-family:var(--mn);color:var(--tx3)">carga</div></div>
+        <div style="width:58px"><div style="font-size:10px;color:var(--tx3);margin-bottom:2px">${pct}%</div><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${lC}"></div></div></div>
+        <div style="display:flex;gap:3px">
+          <span class="badge bg-green" style="font-size:9px">${tks.filter(t=>t.status==='Concluído').length}✓</span>
+          <span class="badge bg-blue" style="font-size:9px">${tks.filter(t=>t.status==='Em andamento').length}▶</span>
+          ${tks.filter(t=>t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0).length?`<span class="badge bg-red" style="font-size:9px">${tks.filter(t=>t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0).length}!</span>`:''}
+        </div>
+        <i class="fa-solid fa-chevron-down" style="color:var(--tx2)"></i>
+      </div>
+    </div>
+    <div id="fbp-${p.id}" class="fila-body" style="display:none">
+      ${filt.map(t=>{const late=t.status!=='Concluído'&&t.prazo&&dL(t.prazo)<0;return`<div class="tk-row${late?' late':''}">
+        <div class="prio-bar" style="background:${pCol(t.prioridade)}"></div>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500" class="txt-wrap">${t.tarefa}</div><div style="font-size:11px;color:var(--tx2)" class="txt-wrap">${t.eng||'—'}</div></div>
+        <span class="badge ${sC(late?'Atrasado':t.status)}" style="font-size:10px">${late?'Atrasado':t.status}</span>
+        <span class="${dlC(t.prazo,t.status==='Concluído')}" style="font-size:11px"><span class="dl-dot"></span>${dlT(t.prazo,t.status==='Concluído')}</span>
+        <span style="font-size:11px;font-family:var(--mn);color:var(--tx2)">${t.horas}h</span>
+      </div>`;}).join('')||'<p style="font-size:12px;color:var(--tx3)">Sem tarefas.</p>'}
+    </div></div>`;}).join('') || '<p style="color:var(--tx3);padding:14px;text-align:center">Nenhum projeto ativo bate com os filtros atuais.</p>';
+}
 
 // ══ GANTT ══
 function gS(d){gStart=new Date(gStart);gStart.setDate(gStart.getDate()+d);renderGantt();}
@@ -4361,12 +4544,53 @@ function renderGantt(){
   const feV=document.getElementById('fg-eng')?.value||'';
   const fsV=document.getElementById('fg-status')?.value||''; // '' | 'pend' | 'conc'
   // v26.0 — Seção 74: '' = ambos (padrão) | 'proj' = só projetos | 'itens' = só etapas e tarefas
-  const ftV=FEATURES.filtroTipoGantt?(document.getElementById('fg-tipo')?.value||''):'';
+  // v35.0 — Seção 110: Visão Macro força "só projetos", sem depender do select
+  const ftV=ganttMacroOn?'proj':(FEATURES.filtroTipoGantt?(document.getElementById('fg-tipo')?.value||''):'');
   const gStatusOk=st=>!fsV||(fsV==='conc'?st==='Concluído':st!=='Concluído');
   // v29.0 — Seção 88 (P3): era o único render sem filtro de arquivados
   // (compare com renderProjetos/meuDiaItens/renderArquivados)
   const _arqIdsGantt=FEATURES.escopoProjetoAtivo?getArquivados():[];
   const projFilt=proj.filter(p=>!_arqIdsGantt.includes(String(p.id))&&(!feV||p.lider===feV));
+  // v35.0 — Seção 112: ordenar as linhas de projeto por risco/prazo/nome (além
+  // da ordem de cadastro, que é o padrão). Reaproveita riscoProjeto(), a mesma
+  // função do Painel de Risco (Seção 81) — mesmo critério nas duas telas.
+  const ordV=FEATURES.ganttOrdenacao?(document.getElementById('fg-ordem')?.value||''):'';
+  if(ordV==='risco') projFilt.sort((a,b)=>riscoProjeto(b).score-riscoProjeto(a).score);
+  else if(ordV==='prazo') projFilt.sort((a,b)=>(normDate(prazoEfetivoProjeto(a))||'9999').localeCompare(normDate(prazoEfetivoProjeto(b))||'9999'));
+  else if(ordV==='nome') projFilt.sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+  // v35.0 — Seções 111/116: 1 passagem só, calcula o "por quê" de cada projeto
+  // (reaproveitando riscoProjeto/projetoAtrasado) e guarda num cache de módulo
+  // — o resumo executivo E o PDF (ganttMontarPDF) leem o MESMO cache, para o
+  // PDF nunca divergir do que está na tela.
+  let nRisco=0,nAtraso=0,nDia=0;
+  _ganttPdfCache = projFilt.map(p=>{
+    const rp=riscoProjeto(p),lateP=projetoAtrasado(p);
+    if(p.status!=='Concluído'){
+      if(rp.nivel==='alto')nRisco++;
+      if(lateP)nAtraso++;
+      if(rp.nivel==='baixo'&&!lateP)nDia++;
+    }
+    return{nome:p.nome,lider:p.lider||'',status:p.status||'',inicio:normDate(p.inicio),fim:normDate(prazoEfetivoProjeto(p)),risco:rp.nivel,score:rp.score,atrasado:lateP,diasAtraso:lateP?Math.abs(dL(p.prazo)):0};
+  });
+  const resumoGanttEl=document.getElementById('gantt-resumo');
+  if(resumoGanttEl){
+    if(FEATURES.ganttResumoExecutivo){
+      resumoGanttEl.innerHTML=`<span><b>${projFilt.length}</b> projeto(s) no filtro</span><span>·</span>`
+        +`<span style="color:var(--rd)"><b>${nRisco}</b> em risco alto</span><span>·</span>`
+        +`<span style="color:var(--rd)"><b>${nAtraso}</b> atrasado(s)</span><span>·</span>`
+        +`<span style="color:#1a9e75"><b>${nDia}</b> em dia</span>`;
+    } else resumoGanttEl.innerHTML='';
+  }
+  // v35.0 — Seção 110: legenda reduzida e sincronismo do botão/select no modo macro
+  // (idempotente — roda a cada renderGantt(), não só no clique do botão, para o
+  // estado ficar certo também no primeiro carregamento, quando a preferência
+  // já vem lembrada do localStorage)
+  const legFull=document.getElementById('gantt-legenda-full'),legMacro=document.getElementById('gantt-legenda-macro');
+  if(legFull&&legMacro){ legFull.style.display=ganttMacroOn?'none':'flex'; legMacro.style.display=ganttMacroOn?'flex':'none'; }
+  const btnMacro=document.getElementById('btn-gantt-macro'),lblMacro=document.getElementById('gantt-macro-label'),tipoSelMacro=document.getElementById('fg-tipo');
+  if(btnMacro)btnMacro.classList.toggle('btn-primary',ganttMacroOn);
+  if(lblMacro)lblMacro.textContent=ganttMacroOn?'Sair da Visão Macro':'Visão Macro (Diretoria)';
+  if(tipoSelMacro){tipoSelMacro.disabled=ganttMacroOn;tipoSelMacro.style.opacity=ganttMacroOn?'.45':'1';tipoSelMacro.title=ganttMacroOn?'Desligue a Visão Macro para escolher outra opção':'';}
   // v28.0 — Seção 85: projeto em Melhoria Contínua não tem prazo, mas precisa
   // aparecer no Gantt. prazoEfetivoProjeto() devolve o HORIZONTE ROLANTE dele
   // (a data do item mais distante) — é limite de desenho, não data de fim.
@@ -4466,11 +4690,13 @@ function renderGantt(){
     if(barCalc){
       const{si,bw}=barCalc;
       const barLabel=bw>80?`${p.nome.substr(0,Math.floor((bw-8)/7))}${pct?' ('+pct+'%)':''}`:bw>40?p.nome.substr(0,Math.floor((bw-8)/7)):'';
+      const diasAtrasoP=late?Math.abs(dL(p.prazo)):0; // v35.0 — Seção 113: dias corridos de atraso, mesmo dL() já usado no resto do arquivo
       rR+=`<div class="gr-row gpr" style="min-width:${totW}px">
         <div class="g-bar${pMC?' g-bar-mc':''}" title="${p.nome}&#10;${fD(pIni)||'—'} → ${pMC?'sem data final (horizonte rolante até '+(fD(pFim)||'—')+')':(fD(pFim)||'—')}&#10;${p.status} · ${p.prioridade}${pMC?'&#10;🔄 MELHORIA CONTÍNUA':''}&#10;Etapas: ${etCon}/${ets.length} (${pct}%)${late?' ⚠ ATRASADO':''}" onclick="openModalProj('${p.id}')" style="left:${si}px;width:${bw}px;background:${bc}">
           ${barLabel}
           ${pct>0&&pct<100?`<div style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:rgba(255,255,255,.18);border-radius:4px 0 0 4px;pointer-events:none"></div>`:''}
         </div>
+        ${FEATURES.ganttSeloAtraso&&late?`<div class="g-late-badge" style="left:${si+bw+4}px" title="Atrasado há ${diasAtrasoP} dia(s)">⚠ ${diasAtrasoP}d</div>`:''}
       </div>`;
     } else {
       rR+=`<div class="gr-row gpr" style="min-width:${totW}px"></div>`;
@@ -4559,14 +4785,14 @@ function renderGantt(){
     return`<div class="gr-day${w?' wk':''}${td?' today':''}" style="width:${gDW}px;min-width:${gDW}px" title="${d.toLocaleDateString('pt-BR')}">${gDW>=16?d.getDate():''}</div>`;
   }).join('');
   document.getElementById('gantt-container').innerHTML=`
-    <div class="gantt-shell">
+    <div class="gantt-shell${ganttMacroOn?' gantt-macro':''}">
       <div class="gantt-left">
         <div class="gl-hdr">
           <div class="gl-cell" style="font-size:9px;font-family:var(--mn);color:var(--tx2);justify-content:center">#</div>
           <div class="gl-cell" style="font-size:9px;font-family:var(--mn);color:var(--tx2)">NOME</div>
           <div class="gl-cell right" style="font-size:9px;font-family:var(--mn);color:var(--tx2)">INÍCIO</div>
           <div class="gl-cell right" style="font-size:9px;font-family:var(--mn);color:var(--tx2)">FIM</div>
-          <div class="gl-cell" style="font-size:9px;font-family:var(--mn);color:var(--tx2);justify-content:center">AÇÕES</div>
+          <div class="gl-cell act" style="font-size:9px;font-family:var(--mn);color:var(--tx2);justify-content:center">AÇÕES</div>
         </div>
         ${lR||'<div style="padding:14px;font-size:11px;color:var(--tx3);text-align:center"><i class="fa-solid fa-filter-circle-xmark" style="display:block;font-size:18px;margin-bottom:6px;opacity:.4"></i>Nenhum item bate com os filtros atuais.<br>Troque o engenheiro ou o status filtrado acima.</div>'}
       </div>
@@ -4581,6 +4807,16 @@ function renderGantt(){
         </div>
       </div>
     </div>`;
+}
+// v35.0 — Seção 110: liga/desliga a Visão Macro do Gantt e lembra a escolha
+// entre sessões (mesmo padrão de toggleTravaCronograma/temaAlternar). A
+// sincronização visual do botão/select roda dentro do próprio renderGantt(),
+// então também fica certa no primeiro carregamento da página.
+function toggleGanttMacro(){
+  if(!FEATURES.ganttVisaoMacro)return;
+  ganttMacroOn=!ganttMacroOn;
+  localStorage.setItem(LGMACRO, ganttMacroOn?'1':'0');
+  renderGantt();
 }
 // ══ EFICIÊNCIA ══
 // Lista as "participações" de um engenheiro em tarefas: 1 entrada se ele é o
@@ -9209,6 +9445,28 @@ function graficosImprimirPDF(){
 }
 async function graficosBaixarPDF(){ await pdfBaixarGenerico(graficosMontarPDF(), 'Relatorio_Graficos'); }
 
+// v35.0 — Seção 116: PDF do Gantt. Em vez de capturar o timeline visual (largura
+// variável, rolagem horizontal — arriscado dentro do #print-report de 1200px
+// fixos), monta uma TABELA a partir do mesmo cache que o resumo executivo da
+// Seção 111 já preenche em renderGantt() (_ganttPdfCache) — garante que o PDF
+// nunca diverge do que está na tela, e sai sempre legível em A4 paisagem.
+function ganttMontarPDF(){
+  const modo = ganttMacroOn ? 'Visão Macro (só projetos)' : 'Detalhado';
+  let html = pdfCabecalhoGenerico('Relatório de Cronograma (Gantt)', modo);
+  const resumo = document.getElementById('gantt-resumo');
+  if(resumo && resumo.innerHTML.trim()) html += '<div class="rp-section-title">Resumo</div>' + resumo.innerHTML.replace(/<span>·<\/span>/g,' · ');
+  html += '<div class="rp-section-title">Projetos</div><table class="rp-table"><thead><tr><th>Projeto</th><th>Líder</th><th>Status</th><th>Risco</th><th>Início</th><th>Fim</th><th>Atraso</th></tr></thead><tbody>';
+  const rotRisco = n => n==='alto'?'Alto':n==='medio'?'Atenção':'Sob controle';
+  html += (_ganttPdfCache.length ? _ganttPdfCache.map(l=>`<tr>
+      <td>${escapeHtml(l.nome)}</td><td>${escapeHtml(l.lider)}</td><td>${escapeHtml(l.status)}</td>
+      <td>${rotRisco(l.risco)} (${l.score})</td><td>${fD(l.inicio)||'—'}</td><td>${fD(l.fim)||'—'}</td>
+      <td>${l.atrasado?'⚠ '+l.diasAtraso+'d':'—'}</td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:#888">Nenhum projeto no filtro atual.</td></tr>');
+  html += '</tbody></table>';
+  return html;
+}
+async function ganttBaixarPDF(){ await pdfBaixarGenerico(ganttMontarPDF(), 'Relatorio_Cronograma'); }
+
 // ── Eficiência (resumo geral + cards + 3 gráficos)
 function eficienciaMontarPDF(){
   let html = pdfCabecalhoGenerico('Relatório de Eficiência', 'Previsto ÷ Realizado × 100 · itens Pendentes excluídos do cálculo');
@@ -9856,7 +10114,15 @@ function dashRender(){
   }
 
   // Gráfico 2 — top 5 projetos mais atrasados em horas (real - prev, só positivo)
-  const atrasoPorProjeto = projAtivos.map(p=>{
+  // v35.0 (corrigido) — mesmo defeito da lição L-local-10: este gráfico usa a
+  // palavra "atrasados" mas nunca checou ehMelhoriaContinua(), diferente do
+  // card "Projetos atrasados" acima (que já usa projetoAtrasado(), e esse SIM
+  // exclui Melhoria Contínua desde a v28.0 — Seção 85). Ficou de fora quando a
+  // Melhoria Contínua foi criada, porque este gráfico é da v18.0/Seção 35,
+  // anterior à v28.0, e nunca foi revisitado. Projeto em Melhoria Contínua não
+  // tem mais "horas previstas" com sentido de teto (é contínuo por definição),
+  // então nem o cálculo de estouro faz sentido para ele — exclui igual ao card.
+  const atrasoPorProjeto = projAtivos.filter(p=>!ehMelhoriaContinua(p)).map(p=>{
     const ets=eta.filter(e=>String(e.projeto_id)===String(p.id));
     const _hp=ets.reduce((a,e)=>a+(parseFloat(e.horas_prev)||0),0);
     const _hr=ets.reduce((a,e)=>a+(parseFloat(e.horas_real)||0),0);
@@ -15582,6 +15848,24 @@ function apresentacaoAbrir(){
     valor: c.querySelector('.metric-value')?.textContent || '—',
     sub: c.querySelector('.metric-sub')?.textContent || ''
   }));
+  // v35.0 — Seção 114: 2 slides extras, reaproveitando riscoProjeto()/
+  // projetoAtrasado() (mesmas funções do Painel de Risco e do Gantt) — nenhum
+  // cálculo novo, só outra forma de mostrar o que já existe.
+  if(FEATURES.apresentacaoAmpliada){
+    const ativosAp = proj.filter(p=>!getArquivados().includes(String(p.id)));
+    const rotRiscoAp = n => n==='alto'?'Alto':n==='medio'?'Atenção':'Sob controle';
+    const riscosAp = ativosAp.map(riscoProjeto).filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
+    if(riscosAp.length) _apSlides.push({
+      tipo:'lista', label:'Projetos em maior risco',
+      itens: riscosAp.map(r=>`${r.nome} — ${r.score} pts (${rotRiscoAp(r.nivel)})${r.motivos.length?' · '+r.motivos[0]:''}`)
+    });
+    let nRiscoAp=0,nAtrasoAp=0;
+    ativosAp.forEach(p=>{ if(p.status==='Concluído')return; if(riscoProjeto(p).nivel==='alto')nRiscoAp++; if(projetoAtrasado(p))nAtrasoAp++; });
+    _apSlides.push({
+      tipo:'lista', label:'Panorama de prazos',
+      itens:[`${ativosAp.length} projeto(s) ativo(s)`, `${nRiscoAp} em risco alto`, `${nAtrasoAp} atrasado(s)`]
+    });
+  }
   if(!_apSlides.length){ toast('Nenhum indicador para apresentar.','err'); return; }
   _apIdx = 0;
   const overlay = document.createElement('div');
@@ -15604,7 +15888,12 @@ function apresentacaoAbrir(){
 function apresentacaoRenderSlide(){
   const s = _apSlides[_apIdx];
   const conteudo = document.getElementById('ap-conteudo');
-  if(conteudo && s) conteudo.innerHTML = `<div class="ap-label">${escapeHtml(s.label)}</div><div class="ap-value">${escapeHtml(s.valor)}</div><div class="ap-sub">${escapeHtml(s.sub)}</div>`;
+  // v35.0 — Seção 114: slide tipo 'lista' (Top Riscos/Panorama) além do 'kpi' original
+  if(conteudo && s){
+    conteudo.innerHTML = s.tipo==='lista'
+      ? `<div class="ap-label">${escapeHtml(s.label)}</div><div class="ap-lista">${(s.itens||[]).map(i=>`<div class="ap-lista-item">${escapeHtml(i)}</div>`).join('')}</div>`
+      : `<div class="ap-label">${escapeHtml(s.label)}</div><div class="ap-value">${escapeHtml(s.valor)}</div><div class="ap-sub">${escapeHtml(s.sub)}</div>`;
+  }
   const dots = document.getElementById('ap-dots');
   if(dots) dots.innerHTML = _apSlides.map((_,i)=>`<span class="ap-dot${i===_apIdx?' ativo':''}"></span>`).join('');
 }
